@@ -1,0 +1,1621 @@
+html,
+body,
+div,
+span,
+object,
+iframe,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+blockquote,
+pre,
+abbr,
+address,
+cite,
+code,
+del,
+dfn,
+em,
+img,
+ins,
+kbd,
+q,
+samp,
+small,
+strong,
+sub,
+sup,
+var,
+b,
+i,
+dl,
+dt,
+dd,
+ol,
+ul,
+li,
+fieldset,
+form,
+label,
+legend,
+table,
+caption,
+tbody,
+tfoot,
+thead,
+tr,
+th,
+td,
+article,
+aside,
+canvas,
+details,
+figcaption,
+figure,
+footer,
+header,
+hgroup,
+menu,
+nav,
+section,
+summary,
+time,
+mark,
+audio,
+video {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    font-size: 100%;
+    vertical-align: baseline;
+    background: transparent;
+}
+
+body {
+    line-height: 1;
+    font-family: arial;
+    background: linear-gradient(to bottom right, rgba(30, 50, 75, 1.0), rgba(5, 10, 13, 1.0));
+    /* background-image: linear-gradient(to bottom, rgba(150, 150, 150, 0.8), rgba(0, 0, 0, 0.6)), url(../img/banner/portrait-banner2.jpg); */
+    font-family: 'Roboto', sans-serif;
+    overflow: hidden;
+    /*background-image:url('../img/banner/laptop.jpg'); */
+    /*background-image:url('https://bviucp.s3.ap-south-1.amazonaws.com/bviu_resource/bviu_contents/bveu_bg_Image_1.jpg');*/
+    background-image:url('https://bviucp.s3.ap-south-1.amazonaws.com/bviu_resource/bviu_contents/bveu_bg_Image_2.jpg');
+    background-size: cover;
+    background-position: bottom;
+}
+
+h1 {
+    font-size: 25px;
+}
+
+h2 {
+    font-size: 21px;
+}
+
+h3 {
+    font-size: 18px;
+}
+
+h4 {
+    font-size: 16px;
+}
+
+article,
+aside,
+details,
+figcaption,
+figure,
+footer,
+header,
+hgroup,
+menu,
+nav,
+section {
+    display: block;
+}
+
+nav ul {
+    list-style: none;
+}
+
+blockquote,
+q {
+    quotes: none;
+}
+
+blockquote:before,
+blockquote:after,
+q:before,
+q:after {
+    content: none;
+}
+
+a {
+    margin: 0;
+    padding: 0;
+    font-size: 100%;
+    vertical-align: baseline;
+    background: transparent;
+}
+
+ins {
+    background-color: #ff9;
+    color: #000;
+    text-decoration: none;
+}
+
+mark {
+    background-color: #ff9;
+    color: #000;
+    font-style: italic;
+    font-weight: bold;
+}
+
+del {
+    text-decoration: line-through;
+}
+
+abbr[title],
+dfn[title] {
+    border-bottom: 1px dotted;
+    cursor: help;
+}
+
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+hr {
+    display: block;
+    height: 1px;
+    border: 0;
+    border-top: 1px solid #222222;
+    margin: 1em 0;
+    padding: 0;
+}
+hr.lightblack {
+    border-top: 1px solid rgba(0,0,0,0.1);
+}
+
+input,
+select {
+    vertical-align: middle;
+}
+
+
+/* *{
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+} */
+
+body,
+html {
+    margin: 0;
+    font-size: 100%;
+    /* background-size: auto; */
+    position: relative;
+    height: 100%;
+    /* overflow: auto; */
+    /* height: -webkit-fill-available;
+  width: -webkit-fill-available; */
+}
+
+header {
+    background: transparent;
+    padding: 5px 5px;
+    width: 100%;
+    margin: auto;
+    z-index: 2;
+}
+
+
+/* #logo {
+    float: left;
+    vertical-align: middle;
+    margin-right: 10px;
+    margin-left:10px;
+    color: #FFF;
+} */
+
+logo img {
+    height: 20px;
+}
+
+bt {
+    z-index: 22;
+    display: inline;
+    text-shadow: 1px 1px 2px black, 0 0 20px #ddd, 0 0 5px #9dbdff;
+}
+
+bt a button {
+    background: transparent;
+    border: none;
+}
+
+bt p {
+    font-size: 10px;
+    line-height: 1.3;
+    color: #ddd;
+    text-align: center;
+}
+
+bt input {
+    font-size: 14px;
+    color: #ddd;
+    text-align: left;
+    height: 30px;
+    width: 300px;
+}
+
+.centering {
+    text-align: center;
+}
+
+.centering img {
+    margin: auto auto;
+    padding: 10px;
+}
+
+#catalogWindow {
+    width: 100%;
+    margin: 0px 0px 0px 0px;
+    padding: 20px 0px;
+    background: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+#catalogSideBanner {
+    float: left;
+}
+
+
+/* #catalogBlocks {
+    padding:10px 10px;
+    margin:15px 15px;
+    border-radius:20px;
+    background:rgba(255,255,255,0.1);
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+} */
+
+
+/* #prodAttribData li {
+    list-style-type: circle;
+    list-style-position: outside;
+} */
+
+.mainBody {
+    height: 100%;
+    vertical-align: middle;
+}
+
+footer {
+    width: 100%;
+    position: fixed;
+    bottom: 0;
+    z-index: 2;
+}
+
+body>section {
+    max-width: 100%;
+    border-bottom: 1px solid #999;
+    color: #333;
+    font-size: 12px;
+}
+
+
+/* #searchSection {
+    max-width: 100%;
+    height: 90%;
+    margin: auto;
+    border: none;
+    z-index: 1;
+}
+
+#searchWindow {
+    display: flex;
+    width: 100%;
+    height: 80%;
+    z-index: 3;
+    background-color: transparent;
+}
+
+#leftSide {
+	width: 20%;
+    margin:0px 10px;
+    border-radius: 20px;
+    background-color: rgba(255, 255, 255, 0.1);
+    z-index: 3;
+}
+#rightSide {
+	width: 77%;
+    z-index: 3;
+} */
+
+
+/* #overlaySearch {
+    display: block; 
+    width: 100%; 
+    height: 100%; 
+    top: 0%; 
+    left: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.4); 
+    z-index: 4; 
+}
+#serachResultWindow {
+    display: block;
+    width: 100%;
+    height: 100%;
+    top: 10%;
+    left: 0;
+    right: 0;
+    z-index: 5;
+} */
+
+#virtualKB {
+    position: absolute;
+    top: 40%;
+    left: 25%;
+    z-index: 10;
+}
+
+
+/* #itemName {
+    text-align: left;
+    line-height: 1.2;
+    font-weight: normal;
+    font-size: 14px;
+    color: #ddd;
+    padding: 10px 20px 0px 20px;
+} */
+
+
+/* 
+#itemDesc {
+    text-align: left;
+    font-size: 12px;
+    color: #ddd;
+    padding: 10px 20px 0px 20px;
+} */
+
+
+/* 
+#itemPrice {
+    float: right;
+    font-size: 12px;
+    text-align: left;
+    font-weight: bold;
+    color: #c0c0ff;
+    padding: 10px 20px 20px 20px;
+} */
+
+
+/* #varietySlide {
+    text-align: center;
+} */
+
+
+/* #varietyBlock {
+    padding: 0px 20px 15px 20px;
+    background: transparent;
+    min-width: 300px;
+}
+#varietyBlock1 {
+    text-align: center;
+    padding: 10px;
+    border-radius: 25px;
+    background: rgba(0,0,0,0.5);
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.8), 0 6px 20px 0 rgba(0, 0, 0, 0.9);
+
+} */
+
+
+/* #selectableSlide {
+    text-align: center;
+} */
+
+
+/* #selectableBlock {
+    padding: 0px 20px;
+    background: transparent;
+} */
+
+#selectableBlock1 {
+    width: 400px;
+    height: 410px;
+    /* width: 100%; */
+    padding: 10px;
+    /* border-radius: 25px; */
+    /* background: rgba(0,0,0,0.5); */
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.8), 0 6px 20px 0 rgba(0, 0, 0, 0.9);
+}
+
+#selectableImage {
+    text-align: center;
+    padding: 10px;
+}
+
+#selectableInfo {
+    text-align: center;
+    padding: 2px 10px;
+    font-size: 14px;
+    color: #c1d8f7;
+}
+
+
+/* #productPics {
+    max-width: 400px;
+    float: left;
+} */
+
+
+/****************************** CHAT BOX ********************************/
+
+
+/* #chatSection {
+    background: transparent;
+    padding: 10px 10px;
+    width: 100%;
+    text-align: center;
+} */
+
+
+/* .chatHeader {
+    display: flex;
+    text-align: center;
+    margin: 10px;
+    color: white;
+    font-size: 20px;
+    padding: 0px;
+    height: 15%;
+} */
+
+.miniChatHeader {
+    display: flex;
+    margin: 10px;
+    color: white;
+    font-size: 20px;
+}
+
+
+/* .chatArea {
+    display: block;
+} */
+
+.miniChatArea {
+    display: block;
+}
+
+
+/* .chatTextArea {
+    display: grid;
+    width: 100%;
+} */
+
+.chatLeftElement {
+    text-align: left;
+}
+
+.chatLeftBox {
+    text-align: left;
+    display: inline-flex;
+}
+
+.chatRightElement {
+    text-align: right;
+}
+
+.chatRightBox {
+    text-align: right;
+    display: inline-flex;
+}
+
+.chatLeftText {
+    text-align: left;
+    color: rgb(28, 96, 160);
+    margin: auto 0px;
+    line-height: 1.3;
+    font-size: 16px;
+    padding: 5px 5px;
+    background-color: rgb(28, 96, 160, 0.1);
+    border-radius: 10px;
+}
+
+.miniChatText {
+    text-align: left;
+    color: rgb(0, 0, 0);
+    margin: auto 0px;
+    font-size: 16px;
+}
+
+.chatRightText {
+    text-align: right;
+    color: black;
+    margin: auto 0px;
+    line-height: 1.3;
+    font-size: 16px;
+    padding: 5px 5px;
+    background-color: rgb(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+.chatLeftAvatar {
+    height: 30px;
+    width: 30px;
+    margin: 2px 10px;
+    float: left;
+}
+
+.chatRightAvatar {
+    height: 30px;
+    width: 30px;
+    margin: 2px 10px;
+    float: right;
+}
+
+
+/* 
+#filterWindow {
+    overflow-x: scroll;
+    margin: 10px 0px 0px 0px;
+    padding: 10px 10px;
+    height: 380px;
+    width: 100%;
+    border-radius: 25px;
+    background: rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.8), 0 6px 20px 0 rgba(0, 0, 0, 0.9);
+}
+
+#filterHeadersArea {
+    display: inline-flex;
+    overflow-y: scroll;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    height: 105px;
+    border-radius: 5px;
+}
+#filterSelectionArea {
+    text-align: left;
+    width: 100%;
+    margin-top: 5px;
+    padding: 18px 25px;
+    height: 185px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 5px;    
+    overflow: -webkit-paged-x;
+} */
+
+
+/* .checkboxArea {
+    position: absolute;
+    height: 190px;
+    width: 300px;
+    overflow: auto;
+    display: none;
+} */
+
+
+/* .checkboxFlexArea {
+    display: -webkit-inline-box;
+} */
+
+
+/* .checkboxBlocks {
+    display: block;
+    margin: 0px 5px;
+    float: left;
+} */
+
+
+/* 
+#filterButtons {
+    margin: 5px 5px;
+    padding: 5px 5px;
+    background-color:rgba(28, 166, 154, 0.1);
+    border-radius: 5px;
+}
+
+#filterApplyButton {
+    width: 180px;
+    height: 50px;
+    padding: 16px;
+    margin-top: 5px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+    background-color:rgba(28, 166, 154, 0.65);
+    border-radius: 10px;
+} */
+
+.bellShaker {
+    animation: shake 0.91s cubic-bezier(.36, .07, .19, .97) both;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    /* perspective: 1000px; */
+}
+
+@keyframes shake {
+    0% {
+        transform: translate(1px, 1px) rotate(0deg);
+    }
+
+    10% {
+        transform: translate(-1px, -2px) rotate(-3deg);
+    }
+
+    20% {
+        transform: translate(-3px, 0px) rotate(3deg);
+    }
+
+    30% {
+        transform: translate(3px, 2px) rotate(0deg);
+    }
+
+    40% {
+        transform: translate(1px, -1px) rotate(3deg);
+    }
+
+    50% {
+        transform: translate(-1px, 2px) rotate(-3deg);
+    }
+
+    60% {
+        transform: translate(-3px, 1px) rotate(0deg);
+    }
+
+    70% {
+        transform: translate(3px, 1px) rotate(-3deg);
+    }
+
+    80% {
+        transform: translate(-1px, -1px) rotate(3deg);
+    }
+
+    90% {
+        transform: translate(1px, 2px) rotate(0deg);
+    }
+
+    100% {
+        transform: translate(1px, -2px) rotate(-3deg);
+    }
+}
+
+
+/* @keyframes shake {
+  10%, 90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+  
+  20%, 80% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  30%, 50%, 70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+
+  40%, 60% {
+    transform: translate3d(4px, 0, 0);
+  }
+} */
+
+
+/****************************** MODAL IMAGE ********************************/
+
+#imageFullScreenDisplay {
+    position: fixed;
+    display: none;
+    width: 100%;
+    top: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+
+/* The Close Button */
+
+.close {
+    position: absolute;
+    top: 15px;
+    right: 35px;
+    color: #f1f1f1;
+    font-size: 40px;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.close:hover,
+.close:focus {
+    color: #bbb;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+
+/* #galleryThumbnail {
+    overflow:auto;
+    width: 400px;
+} */
+
+
+/********************************************************************************/
+
+
+/* #itemShow4 {
+    min-height: 720px;
+    max-height: 800px;
+    width: 100%;
+    padding: 10px;
+    border-radius: 25px;
+    background: rgba(255,255,255,0.05);
+} */
+
+
+/* #detailSlide {
+    position: inherit;
+    width: 100%;
+    height: 1050px;
+    padding: 50px 20px 10px 20px;
+    margin-top: -40px;
+    background: rgba(215,215,215,1.0); */
+
+
+/* overflow: scroll; */
+
+
+/* text-align: center; */
+
+
+/* } */
+
+.detailBlock {
+    height: 990px;
+    margin: 0px 80px;
+    overflow: auto;
+}
+
+
+/* #detailBlock1 {
+    background: transparent;
+}
+
+#detailBlock2 {
+    overflow: auto;
+    height: 780px;
+    margin: 0px 50px 0px 50px;
+    padding: 10px;
+    border-radius: 25px;
+    background: rgba(0,0,0,0.5);
+} */
+
+
+/* #productDocuments {
+    display: flex;
+    overflow: wrap;
+    padding: 10px;
+    text-align: center;
+} */
+
+#productDocumentBlock {
+    margin: 10px auto;
+    /* width: 200px; */
+    padding: 10px;
+    text-align: center;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.8), 0 6px 20px 0 rgba(0, 0, 0, 0.9);
+}
+
+
+/* #documentName {
+    font-weight: normal;
+    line-height: 1.5;
+    font-size: 16px;
+    padding: 10px 10px;
+    color: #c1d8f7;
+} */
+
+
+/* #infoShow {
+    min-height: 800px;
+    width: 100%;
+    padding: 10px;
+    border-radius: 25px;
+    background: rgba(0,0,0,0.4);
+} */
+
+
+/* #productSection {
+    position: absolute;
+    top: 60px;
+    width: 100%;
+    height: 86%;
+    border: none;
+} */
+
+#productResponsiveSection {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+
+/* #productPictureSide {
+    display:inline-block;
+    background:rgba(215,215,215,1.0);
+    width: 100%;
+    padding: 20px;
+    z-index: 4;
+    text-align: center;
+} */
+
+
+/* #productPictureSideWindow {
+    display: block;
+    height: 100%;
+    padding: 30px 0px 0px 0px;
+    margin: 0px 0px;
+} */
+
+
+/* #productDescriptionSide {
+    margin: 20px 0px 0px 0px;    
+    z-index: 3;
+} */
+
+#productDetailSide {
+    width: 75%;
+    padding: 0px 10px;
+    background: transparent;
+}
+
+
+/* #orderSide {
+    position: relative;
+    top: -250px;
+    right: -500px;
+    width:25%;
+    padding: 0px 10px;
+    background: transparent;
+} */
+
+
+/* #productDescription {
+    display: block;
+    width: 100%;
+    height: 1040px;
+    background: rgba(255,255,255,0.1);
+} */
+
+#productVariety {
+    width: 100%;
+    margin: 15px 15px;
+    border-radius: 25px;
+    padding: 20px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.8), 0 6px 20px 0 rgba(0, 0, 0, 0.9);
+}
+
+
+/* #productSelectables {
+    margin: 15px 15px;
+    border-radius: 25px;
+    padding: 20px 20px; 
+    background:rgba(255,255,255,0.05);
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.8), 0 6px 20px 0 rgba(0, 0, 0, 0.9);
+} */
+
+
+/* #countDisplay {
+    font-size: 11px;
+    line-height:1.2;
+    color:#c1d8f7;
+    text-align:center;
+} */
+
+#prodName {
+    text-align: left;
+    font-weight: normal;
+    line-height: 1.5;
+    font-size: 22px;
+    padding: 10px 20px;
+    color: #c1d8f7;
+}
+
+#prodManufacturer {
+    text-align: left;
+    font-weight: normal;
+    line-height: 1.5;
+    font-size: 16px;
+    padding: 10px 20px;
+    color: #c1d8f7;
+}
+
+#prodDesc {
+    text-align: left;
+    font-size: 16px;
+    padding: 5px 20px;
+    line-height: 1.5;
+    color: #c1d8f7;
+}
+
+#prodPrice {
+    text-align: left;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 10px 20px;
+    color: #fff;
+    line-height: 1.5;
+}
+
+
+/* #divHeading {
+    text-align: center;
+    font-size: 20px;
+    font-weight: bold;
+    margin: 20px 10px 10px 10px;
+    color:#fff;
+    line-height: 1.5;
+    text-shadow: 1px 1px 2px black, 0 0 20px #d9edf7, 0 0 5px #3b62b3;
+} */
+
+
+/* #prodAttribHeading {
+    text-align: left;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 5px 0px 0px 20px;
+    color: #c1d8f7;
+    line-height: 1.5;
+} */
+
+
+/* #prodAttribData {
+    text-align: left;
+    font-size: 16px;
+    line-height:1.5;
+    color: #c1d8f7;
+    padding: 5px 10px 0px 10px;
+} */
+
+#pdfViewerSection {
+    width: 100%;
+    height: 100%;
+    margin: auto;
+    border: none;
+    opacity: 1;
+}
+
+#pdfViewerWindow {
+    z-index: 1;
+    width: 100%;
+    height: -webkit-fill-available;
+}
+
+#pdfViewerCloseBtn {
+    height: 50px;
+    float: right;
+}
+
+#fileHeader {
+    display: flex;
+    text-align: center;
+    font-size: 20px;
+    font-weight: bold;
+    margin: 20px 10px 10px 10px;
+    color: #fff;
+    line-height: 1.5;
+    text-shadow: 1px 1px 2px black, 0 0 20px #d9edf7, 0 0 5px #3b62b3;
+}
+
+#pdfViewer {
+    margin: 0px 0px;
+    z-index: 2;
+}
+
+#threeDViewerSection {
+    position: absolute;
+    z-index: 10;
+    width: 100%;
+    height: 100%;
+    margin: auto;
+    border: none;
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+#threeDViewerWindow {
+    margin: 300px auto 0 auto;
+    z-index: 11;
+}
+
+#imageHeader {
+    display: flex;
+    text-align: center;
+    font-size: 20px;
+    font-weight: bold;
+    margin: 0px 0px 20px 0px;
+    border-radius: 10px;
+    color: #fff;
+    line-height: 2.5;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    text-shadow: 1px 1px 2px black, 0 0 20px #d9edf7, 0 0 5px #3b62b3;
+}
+
+.settingLeft {
+    padding: 0px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.settingRight {
+    padding: 0px 20px;
+    float: right;
+    color: rgba(0, 90, 194, 1) !important;
+}
+
+.required {
+    color: red;
+}
+
+
+/* @media screen and (max-width: 1000px) {
+	body > section {
+		padding: 30px 10px;
+	}
+} */
+
+@media screen and (max-width: 600px) {
+    main {
+        float: none;
+        width: 100%;
+    }
+
+    aside {
+        float: none;
+        width: 100%;
+    }
+}
+
+
+/* 
+#slideshow {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 3;
+}
+
+#slideshow1 {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    z-index: 6;
+} */
+
+#breadcrumbs {
+    margin: 20px 10px 20px 10px;
+    z-index: 100;
+    /* display: flex; */
+}
+
+
+/* 
+#breadCrumbDiv {
+    float: left;
+    text-align: center;
+}
+
+#breadCrumbArrow {
+    float: left;
+    text-align: center;
+}
+
+#breadCrumbDivDisabled {
+    float: left;
+    text-align: center;
+} */
+
+
+/*jssor slider loading skin spin css*/
+
+.loadingSpin img {
+    animation-name: loadingSpin;
+    animation-duration: 1.6s;
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+}
+
+@keyframes loadingSpin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+#wallpaper {
+    position: fixed;
+    /* Sit on top of the page content */
+    display: block;
+    /* Hidden by default */
+    width: 100%;
+    /* Full width (cover the whole page) */
+    height: 100%;
+    /* Full height (cover the whole page) */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 0;
+    /* Specify a stack order in case you're using a different order for other elements */
+    background-repeat: no-repeat;
+    background-size: auto;
+}
+
+
+/* #overlayCategory {
+    position: fixed; // Sit on top of the page content 
+    display: block; // Hidden by default 
+    width: 100%; // Full width (cover the whole page) 
+    height: 84%; // Full height (cover the whole page) 
+    top: 7.5%; 
+    left: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.4); // Black background with opacity 
+    z-index: 2; // Specify a stack order in case you're using a different order for other elements 
+} */
+
+#addToCart {
+    margin: 20px auto;
+    padding: 10px;
+    text-align: center;
+    background: transparent;
+    z-index: 4;
+}
+
+#addToCartBlock {
+    display: grid;
+    padding: 10px 10px;
+    text-align: center;
+    border-radius: 15px;
+    background-color: rgba(255, 255, 255, 0.05);
+    /* Black background with opacity */
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.8), 0 6px 20px 0 rgba(0, 0, 0, 0.9);
+}
+
+#numberScrollerBlock {
+    display: grid;
+    padding: 10px 10px;
+    text-align: center;
+    border-radius: 15px;
+    background-color: rgba(0, 0, 0, 0.5);
+    /* Black background with opacity */
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.8), 0 6px 20px 0 rgba(0, 0, 0, 0.9);
+}
+
+#plusMinusButton {
+    width: 180px;
+    height: 60px;
+    line-height: 60px;
+    text-align: center;
+    font-size: 28px;
+    font-weight: bold;
+    color: #fff;
+    background-color: rgba(28, 166, 154, 0.65);
+    border-radius: 10px;
+}
+
+
+/*
+  When creating your CSS selector,
+  change "brown" to something of your choosing
+  */
+
+.waves-effect.waves-brown .waves-ripple {
+    /* The alpha value allows the text and background color
+    of the button to still show through. */
+    background-color: rgba(121, 85, 72, 0.65);
+}
+
+#numberSlot {
+    width: 180px;
+    height: 60px;
+    text-align: center;
+    line-height: 60px;
+    color: #ffffff;
+    font-size: 25px;
+    font-weight: bold;
+}
+
+#addToCartButton {
+    width: 100px;
+    height: 80px;
+    margin: 20px 50px;
+    text-align: center;
+    border-radius: 15px;
+    background-size: contain;
+    padding: 5px;
+    background-color: rgba(255, 255, 255, 0.1);
+    /* Black background with opacity */
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.8), 0 6px 20px 0 rgba(0, 0, 0, 0.9);
+}
+
+@media screen and (orientation: portrait) {
+
+    /* .slick-next,
+  .slick-prev {
+    top: 47.5%;
+  } */
+    #addToCart {
+        margin: 0px auto 20px auto;
+    }
+
+    #addToCartBlock {
+        display: inline-flex;
+    }
+
+    #numberScrollerBlock {
+        display: inline-flex;
+    }
+
+    #numberSlot {
+        height: 80px;
+        line-height: 80px;
+        margin: auto;
+    }
+
+    #plusMinusButton {
+        width: 80px;
+        height: 80px;
+        line-height: 80px;
+        margin: auto;
+    }
+
+    #productDetailSide {
+        width: 100%;
+        margin: 10px 0px;
+        padding: 0px 10px;
+    }
+
+    /* #orderSide {
+        width: 50%;
+    } */
+    /* #infoShow {
+        min-height: 100px;
+    } */
+    /* #searchWindow {
+        display: block;
+        top: 4%;
+        height:92%
+    }
+   #leftSide {
+        display: inline-grid;
+        width: 98%;
+    }   
+    #rightSide {
+        width: 100%;
+        margin-top: 30px;
+    }    
+    #virtualKB {
+        left: 1.5%;
+    } */
+    /* #chatWindow {
+        display: block;
+        width: 40%;
+        height: 380px;
+        margin: 0px auto;
+    } */
+    /* #filterWindow {
+        margin: 0px auto;
+        width: 50%;
+    }     */
+    #chatArea {
+        display: flex;
+        margin: 0px auto;
+    }
+
+    /* .checkboxArea {
+        width: 440px;
+    }          */
+}
+
+@media screen and (orientation: landscape) {
+    #rightSide {
+        height: 100%;
+    }
+}
+
+#percentageDiv {
+    position: absolute;
+    left: 42%;
+    top: 50%;
+    display: none;
+    z-index: 23;
+    width: 200px;
+    height: 100px;
+    border-radius: 20px;
+    text-align: center;
+    font-size: 40px;
+    color: #c0c0ffff;
+    background-color: #00000055;
+}
+
+
+/* This is just a sample file with CSS rules. You should write your own @font-face declarations
+ * to add support for your desired fonts.
+ */
+
+@font-face {
+    font-family: "Novecentowide Book";
+    src: url("/ViewerJS/fonts/Novecentowide-Bold-webfont.eot");
+    src: url("/ViewerJS/fonts/Novecentowide-Bold-webfont.eot?#iefix") format("embedded-opentype"), url("/ViewerJS/fonts/Novecentowide-Bold-webfont.woff") format("woff"), url("/fonts/Novecentowide-Bold-webfont.ttf") format("truetype"), url("/fonts/Novecentowide-Bold-webfont.svg#NovecentowideBookBold") format("svg");
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: "exotica";
+    src: url("/ViewerJS/fonts/Exotica-webfont.eot");
+    src: url("/ViewerJS/fonts/Exotica-webfont.eot?#iefix") format("embedded-opentype"), url("/ViewerJS/fonts/Exotica-webfont.woff") format("woff"), url("/ViewerJS/fonts/Exotica-webfont.ttf") format("truetype"), url("/ViewerJS/fonts/Exotica-webfont.svg#exoticamedium") format("svg");
+    font-weight: normal;
+    font-style: normal;
+}
+
+.container {
+    margin: 0 auto;
+}
+
+
+/* Example wrapper */
+
+.wrap {
+    position: relative;
+    margin: 10px auto;
+    /* width: 430px; */
+    /* frame ul li (width*5)+padding for 5 elements  */
+    /* border: #dddd; */
+    background-color: rgba(100, 100, 100, 1);
+    /* border-style: solid; */
+    /* border-width: 1px; */
+    border-radius: 45px;
+    padding: 5px 15px;
+    box-shadow: 4px 4px 8px 0 rgba(0, 0, 0, 0.2);
+}
+
+
+/* Frame */
+
+.frame {
+    /* height: 80px;
+    line-height: 80px; */
+    overflow: hidden;
+}
+
+.frame ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    line-height: 1.8;
+    font-size: 2em;
+}
+
+.frame ul li {
+    float: left;
+    width: 3em;
+    height: 3em;
+    margin: 0px 1px 3px 0;
+    padding: 0;
+    /* background: #333a; */
+    background: transparent;
+    /* color: #ddd; */
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+    cursor: pointer;
+}
+
+.frame ul li.active {
+    color: #fff;
+    background: rgba(0, 255, 190, 0.8);
+    font-size: 2em;
+    line-height: 1.8;
+    /* background: hsl(147, 52%, 41%); */
+    border-radius: 100%;
+    /* box-shadow: inset 2px 2px 4px rgba(255,255,255,0.1), inset -2px -2px 4px rgba(0,0,0,0.5); */
+}
+
+
+/* Scrollbar */
+
+.scrollbar {
+    margin: 0 0 1em 0;
+    height: 2px;
+    background: rgb(179, 17, 17);
+    line-height: 0;
+}
+
+.scrollbar .handle {
+    width: 80px;
+    height: 100%;
+    background: #292a33;
+    cursor: pointer;
+}
+
+.scrollbar .handle .mousearea {
+    position: absolute;
+    top: -9px;
+    left: 0;
+    width: 100%;
+    height: 20px;
+}
+
+
+/* Pages * /
+.pages {
+	list-style: none;
+	margin: 20px 0;
+	padding: 0;
+	text-align: center;
+}
+.pages li {
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	margin: 0 4px;
+	text-indent: -999px;
+	border-radius: 10px;
+	cursor: pointer;
+	overflow: hidden;
+	background: #fff;
+	box-shadow: inset 0 0 0 1px rgba(0,0,0,.2);
+}
+.pages li:hover {
+	background: #aaa;
+}
+.pages li.active {
+	background: #666;
+}
+*/
+
+
+/* Controls */
+
+.controls {
+    margin: 25px 0;
+    text-align: center;
+}
+
+
+/* One Item Per Frame example* /
+.oneperframe { height: 300px; line-height: 300px; }
+.oneperframe ul li { width: 1140px; }
+.oneperframe ul li.active { background: #333; }
+*/
+
+
+/* Crazy example * /
+.crazy ul li:nth-child(2n) { width: 100px; margin: 0 4px 0 20px; }
+.crazy ul li:nth-child(3n) { width: 300px; margin: 0 10px 0 5px; }
+.crazy ul li:nth-child(4n) { width: 400px; margin: 0 30px 0 2px; }
+*/
+
+.pulseColor {
+    background-color: #222;
+    animation-name: colorPulse;
+    animation-duration: 2s;
+    animation-iteration-count: infinite;
+}
+
+@keyframes colorPulse {
+    0% {
+        background-color: rgba(255, 255, 255, 0.5);
+    }
+
+    50% {
+        background-color: rgba(100, 200, 150, 0.9);
+    }
+
+    100% {
+        background-color: rgba(255, 255, 255, 0.5);
+    }
+}
+
+
+/*************************** Swipe to delete list **************************/
+
+.item-list {
+    overflow: hidden;
+}
+
+.item-list .item {
+    position: relative;
+    display: table;
+    width: 100%;
+    background: #FFF;
+    border-bottom: 1px solid rgba(200, 200, 200, 0.5);
+    margin-top: 2px;
+}
+
+.item-list .item>div {
+    padding: 0;
+    /* box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23); */
+}
+
+.item-list .item .action {
+    position: absolute;
+    width: 120px;
+    height: 100%;
+    top: 0;
+    border: 0;
+    color: #fff;
+    outline: none;
+}
+
+.item-list .item .action:first-child::before,
+.item-list .item .action:last-child::before {
+    position: absolute;
+    top: 0;
+    content: "";
+    width: 100%;
+    height: 100%;
+}
+
+.item-list .item .action:first-child {
+    left: -120px;
+}
+
+.item-list .item .action:first-child::before {
+    right: 120px;
+}
+
+.item-list .item .action:last-child {
+    right: -120px;
+}
+
+.item-list .item .action:last-child::before {
+    left: 120px;
+}
+
+.item-list .item .action,
+.item-list .item .action::before {
+    background: rgba(255, 183, 0, 1);
+}
+
+input[type="checkbox"] {
+	cursor: pointer;
+	width: 15px;
+	height: 20px;
+    vertical-align: sub;
+    margin: 0px 10px;
+}
+
+input[type="radio"] {
+	cursor: pointer;
+	width: 15px;
+	height: 20px;
+    vertical-align: sub;
+    margin: 0px 10px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+    background: url(https://cdn3.iconfinder.com/data/icons/linecons-free-vector-icons-pack/32/calendar-16.png) center/80% no-repeat;
+    /* content: "\f073"; */
+    font-family: FontAwesome;
+    color: rgba(50, 50, 50, 1);
+    opacity: 1;
+}
+
+.dropShadowPng {
+    -webkit-filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.2));
+    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.2));
+}

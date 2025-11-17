@@ -1,0 +1,139 @@
+
+/**************************************************** Company Logo Styles ****************************************************/
+
+.companyLogoStyle {
+    height: 4em;
+}
+
+.companyTagTextStyle {
+    color: rgb(150,150,150);
+    font-size: 1.0em;
+    padding: 5px 0;
+
+}
+
+/**************************************************** Home Styles ****************************************************/
+
+.homeMenu1Style {
+    text-align: center;
+}
+
+.homeMenuBtnAreaStyle {
+    display: inline-block;
+    width: 80%;
+    margin-top: 30px;
+    /*backdrop-filter: blur(4px);
+    background-color: rgba(0,0,0,0.2);*/
+}
+
+.homeMenu1BtnStyle {
+    position: relative;
+    margin: 15px 15px;
+    padding: 15px 10px;
+    width: 140px;
+    height: 140px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    background-color: rgb(80,55,120);
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.homeMenu1ActiveBtnStyle {
+    position: relative;
+    float: left;
+    margin: 15px 15px;
+    padding: 15px 10px;
+    /* width: 44%;
+    height: 44%; */
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.9);
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+}
+
+.homeMenu1BtnTextStyle {
+    /* position: relative;
+    top: 25%; */
+    font-size: 1.2em;
+    margin: 5px 0 0 0;
+    line-height: 1.0;
+    color: rgba(255, 255, 255, 1.0);
+    font-family: 'Roboto', sans-serif;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.homeMenu1ActiveBtnTextStyle {
+    /* position: relative;
+    top: 25%; */
+    font-size: 1.2em;
+    margin: 20px 0px 10px;
+    line-height: 1.3;
+    color: rgba(255, 255, 255, 1.0);
+    font-family: 'Roboto', sans-serif;
+    text-align: center;
+    font-weight: bold;
+}
+
+.homeMenu1IconStyle {
+    /* position: relative;
+    top: 20%; */
+    font-size: 2em;
+    color: rgba(255, 255, 255, 1.0);
+}
+
+.homeMenu1ActiveIconStyle {
+    /* position: relative;
+    top: 20%; */
+    font-size: 7em;
+    color: rgba(255, 255, 255, 1.0);
+}
+
+
+@media only screen and (max-width: 1079px) and (min-width: 720px){
+    .homeMenu1BtnStyle {
+        width: 120px;
+        height: 120px;
+    }
+    .homeMenu1BtnTextStyle {
+        font-size: 0.9em;
+    }
+}
+
+@media only screen and (max-width: 719px) and (min-width: 600px) {
+    .homeMenu1BtnStyle {
+        width: 100px;
+        height: 100px;
+    }
+    .homeMenu1BtnTextStyle {
+        font-size: 0.8em;
+    }
+}
+
+@media only screen and (max-width: 599px) and (min-width: 400px) {
+    .homeMenu1BtnStyle {
+        width: 90px;
+        height: 900px;
+    }
+    .homeMenu1BtnTextStyle {
+        font-size: 0.8em;
+    }
+}
+
+@media only screen and (max-width: 399px) {
+    .homeMenu1BtnStyle {
+        width: 80px;
+        height: 80px;
+    }
+    .homeMenu1BtnTextStyle {
+        font-size: 0.7em;
+    }
+}
+
