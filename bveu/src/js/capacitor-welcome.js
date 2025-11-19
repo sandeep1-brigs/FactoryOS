@@ -5,8 +5,9 @@ import { Http } from '@capacitor-community/http';
 import { Network } from '@capacitor/network';
 import { App } from '@capacitor/app';
 import $ from 'jquery';
-import { AppUpdate } from '@capawesome/capacitor-app-update';
-
+import { AppUpdate } from "@robingenz/capacitor-app-update";
+import ApkInstaller from "./plugins/apk-installer.js";
+import QRCode from 'qrcodejs2-fix';
 
 
 
@@ -17,6 +18,236 @@ import { viewHome } from "./settings.js";
 
 var infoJSON = {};
 var userFirstName = "";
+var directoryReader;
+var appAliveTimer = null;
+var qrcode;
+
+
+// MAIN FUNCTION
+//  export async function getSerialNumber() {
+//   try {
+//     console.log("getSerialNumber: Starting...");
+
+//     const dirResult = await Filesystem.getUri({
+//       directory: Directory.Data,
+//       path: "",
+//     });
+
+//     shared.ROOT_STORAGE_PATH = dirResult.uri;
+//     console.log("ROOT_STORAGE_PATH set to:", shared.ROOT_STORAGE_PATH);
+
+//     initAppRuntimeMonitor();
+
+//     // ✅ Check if systemConfiguration exists
+//     if (!shared.systemConfiguration || !shared.systemConfiguration.systemInfo) {
+//       console.error("systemConfiguration or systemInfo is undefined");
+//       showDialog("System configuration is not loaded yet.");
+//       return;
+//     }
+
+//     const folder = shared.systemConfiguration.systemInfo.localAppFolderDigiSign;
+//     const fileName = "serialNumber.txt";
+//     const filePath = `${folder}/${fileName}`.replace(/\/+/g, "/");
+
+//     // Ensure directory exists
+//     try {
+//       await Filesystem.mkdir({
+//         path: folder,
+//         directory: Directory.Data,
+//         recursive: true,
+//       });
+//       console.log("Directory ensured:", folder);
+//     } catch (e) {
+//       console.log("Directory may already exist:", e);
+//     }
+
+//     // Try reading serial number file
+//     try {
+//       const result = await Filesystem.readFile({
+//         path: filePath,
+//         directory: Directory.Data,
+//         encoding: Encoding.UTF8,
+//       });
+//       console.log("Serial number file found.");
+//       await onSerialNoFileFound(result.data);
+//     } catch (e) {
+//       console.log("Serial number file not found. Creating...");
+//       await serialNoFileNotFound(folder, filePath);
+//     }
+//   } catch (error) {
+//     showDialog("getSerialNumber: Filesystem Failed! " + JSON.stringify(error));
+//     console.error("getSerialNumber: Filesystem Failed!", error);
+//   }
+// }
+
+export async function getSerialNumber() {
+  try {
+    console.log("getSerialNumber: Starting...");
+
+    // --- Step 1: Resolve ROOT_STORAGE_PATH (same as cordova.file.dataDirectory) ---
+    const dirResult = await Filesystem.getUri({
+      directory: Directory.Data,
+      path: "",
+    });
+
+    shared.ROOT_STORAGE_PATH = dirResult.uri;
+    console.log("ROOT_STORAGE_PATH:", shared.ROOT_STORAGE_PATH);
+
+    initAppRuntimeMonitor();
+
+    if (!shared.systemConfiguration || !shared.systemConfiguration.systemInfo) {
+      console.error("systemConfiguration or systemInfo is undefined");
+      showDialog("System configuration is not loaded yet.");
+      return;
+    }
+
+    const folder = shared.systemConfiguration.systemInfo.localAppFolderDigiSign;
+    const fileName = "serialNumber.txt";
+    const filePath = `${folder}/${fileName}`.replace(/\/+/g, "/");
+
+    // --- Step 2: Ensure DigiSign directory exists (Cordova: getDirectory(create:true)) ---
+    try {
+      await Filesystem.mkdir({
+        directory: Directory.Data,
+        path: folder,
+        recursive: true,
+      });
+      console.log("getSerialNumber: DigiSign directory created or already exists.");
+    } catch (err) {
+      console.log("getSerialNumber: DigiSign directory may already exist.", err);
+    }
+
+    // --- Step 3: Try reading the serialNumber.txt file (Cordova: getFile(create:false)) ---
+    try {
+      const readResult = await Filesystem.readFile({
+        directory: Directory.Data,
+        path: filePath,
+        encoding: Encoding.UTF8,
+      });
+
+      console.log("getSerialNumber: serialNumber.txt found.");
+      await onSerialNoFileFound(readResult.data); // Pass ONLY file content, 
+      return;
+    } catch (err) {
+      console.warn("getSerialNumber: serialNumber.txt NOT found.");
+    }
+
+    // --- Step 4: File Not Found → Create File (Cordova: serialNoFileNotFound(serialNoFileName)) ---
+    console.log("getSerialNumber: Creating serial number file...");
+    await serialNoFileNotFound(fileName);  // FIXED: Pass only fileName 
+
+  } catch (error) {
+    console.error("getSerialNumber: Filesystem FAILED!", error);
+    showDialog("getSerialNumber: Filesystem FAILED! " + JSON.stringify(error));
+  }
+}
+
+
+// FILE FOUND HANDLER
+// async function onSerialNoFileFound(fileData) {
+//   try {
+//     shared.deviceSerialNumber = fileData
+//     console.log("onSerialNoFileFound: deviceSerialNumber:", shared.deviceSerialNumber)
+
+//     const deviceId = await Device.getId()
+//     shared.deviceMACAddress = deviceId.identifier
+//     console.log("this is proof of second run")
+
+//     getSystemConfigurationFromFile()
+//   } catch (error) {
+//     console.error("onSerialNoFileFound: MAC Address failed:", error)
+//     showDialog("Failed to get device MAC address: " + error.message)
+//   }
+// }
+
+async function onSerialNoFileFound(fileData) {
+  try {
+    // Cordova → reader.result
+    shared.deviceSerialNumber = fileData;
+    console.log("onSerialNoFileFound: deviceSerialNumber:", shared.deviceSerialNumber);
+
+    // Cordova: no MAC fetching, but your logic requires Device.getId()
+    const deviceId = await Device.getId();
+    shared.deviceMACAddress = deviceId.identifier;
+
+    getSystemConfigurationFromFile();
+  } catch (error) {
+    console.error("onSerialNoFileFound: MAC Address failed:", error);
+    showDialog("Failed to get device MAC address: " + error.message);
+  }
+}
+
+
+// FILE NOT FOUND HANDLER
+// async function serialNoFileNotFound(folder , filePath) {
+//   try {
+//     console.log("serialNoFileNotFound: Creating serial number file at", filePath) 
+//     const uniqueID = await createDeviceSerialNumber()
+
+//     await Filesystem.writeFile({
+//       path: filePath,
+//       data: uniqueID,
+//       directory: Directory.Data,
+//       encoding: Encoding.UTF8,
+//     })
+
+//     console.log("serialNoFileNotFound: File written:", filePath)
+//     shared.deviceSerialNumber = uniqueID
+
+//     // Get device MAC address
+//     try {
+//       const deviceId = await Device.getId()
+//       shared.deviceMACAddress = deviceId.identifier
+//     } catch (error) {
+//       console.error("Failed to get device ID:", error)
+//       shared.deviceMACAddress = "Unknown"
+//     }
+
+//     getSystemConfigurationFromFile()
+//   } catch (error) {
+//     console.error("serialNoFileNotFound: File creation failed!", error)
+//     showDialog("Failed to create serial number file: " + error.message)
+//   }
+// }
+
+async function serialNoFileNotFound(fileName) {
+  try {
+    const folder = shared.systemConfiguration.systemInfo.localAppFolderDigiSign;
+    const filePath = `${folder}/${fileName}`.replace(/\/+/g, "/");
+
+    console.log("serialNoFileNotFound: Creating serial number file:", filePath);
+
+    // Cordova's createWriter → Write file
+    const uniqueID = await createDeviceSerialNumber();
+
+    await Filesystem.writeFile({
+      path: filePath,
+      data: uniqueID,
+      directory: Directory.Data,
+      encoding: Encoding.UTF8,
+    });
+
+    console.log("serialNoFileNotFound: File written:", filePath);
+
+    // Match Cordova logic → update global deviceSerialNumber
+    shared.deviceSerialNumber = uniqueID;
+
+    // Additional your logic: fetch MAC
+    try {
+      const deviceId = await Device.getId();
+      shared.deviceMACAddress = deviceId.identifier;
+    } catch (err) {
+      console.error("Failed to get device ID:", err);
+      shared.deviceMACAddress = "Unknown";
+    }
+
+    getSystemConfigurationFromFile();
+  } catch (error) {
+    console.error("serialNoFileNotFound: File creation failed!", error);
+    showDialog("Failed to create serial number file: " + error.message);
+  }
+}
+
 
 async function createDeviceSerialNumber() {
     try {
@@ -56,112 +287,6 @@ async function createDeviceSerialNumber() {
         console.log("createDeviceSerialNumber failed:" + error.toString());
         return Date.now().toString();
     }
-}
-
-// MAIN FUNCTION
- export async function getSerialNumber() {
-  try {
-    console.log("getSerialNumber: Starting...");
-
-    const dirResult = await Filesystem.getUri({
-      directory: Directory.Data,
-      path: "",
-    });
-
-    shared.ROOT_STORAGE_PATH = dirResult.uri;
-    console.log("ROOT_STORAGE_PATH set to:", shared.ROOT_STORAGE_PATH);
-
-    initAppRuntimeMonitor();
-
-    // ✅ Check if systemConfiguration exists
-    if (!shared.systemConfiguration || !shared.systemConfiguration.systemInfo) {
-      console.error("systemConfiguration or systemInfo is undefined");
-      showDialog("System configuration is not loaded yet.");
-      return;
-    }
-
-    const folder = shared.systemConfiguration.systemInfo.localAppFolderDigiSign;
-    const fileName = "serialNumber.txt";
-    const filePath = `${folder}/${fileName}`.replace(/\/+/g, "/");
-
-    // Ensure directory exists
-    try {
-      await Filesystem.mkdir({
-        path: folder,
-        directory: Directory.Data,
-        recursive: true,
-      });
-      console.log("Directory ensured:", folder);
-    } catch (e) {
-      console.log("Directory may already exist:", e);
-    }
-
-    // Try reading serial number file
-    try {
-      const result = await Filesystem.readFile({
-        path: filePath,
-        directory: Directory.Data,
-        encoding: Encoding.UTF8,
-      });
-      console.log("Serial number file found.");
-      await onSerialNoFileFound(result.data);
-    } catch (e) {
-      console.log("Serial number file not found. Creating...");
-      await serialNoFileNotFound(folder, filePath);
-    }
-  } catch (error) {
-    showDialog("getSerialNumber: Filesystem Failed! " + JSON.stringify(error));
-    console.error("getSerialNumber: Filesystem Failed!", error);
-  }
-}
-
-// FILE FOUND HANDLER
-async function onSerialNoFileFound(fileData) {
-  try {
-    shared.deviceSerialNumber = fileData
-    console.log("onSerialNoFileFound: deviceSerialNumber:", shared.deviceSerialNumber)
-
-    const deviceId = await Device.getId()
-    shared.deviceMACAddress = deviceId.identifier
-    console.log("this is proof of second run")
-
-    getSystemConfigurationFromFile()
-  } catch (error) {
-    console.error("onSerialNoFileFound: MAC Address failed:", error)
-    showDialog("Failed to get device MAC address: " + error.message)
-  }
-}
-
-// FILE NOT FOUND HANDLER
-async function serialNoFileNotFound(folder , filePath) {
-  try {
-    console.log("serialNoFileNotFound: Creating serial number file at", filePath) 
-    const uniqueID = await createDeviceSerialNumber()
-
-    await Filesystem.writeFile({
-      path: filePath,
-      data: uniqueID,
-      directory: Directory.Data,
-      encoding: Encoding.UTF8,
-    })
-
-    console.log("serialNoFileNotFound: File written:", filePath)
-    shared.deviceSerialNumber = uniqueID
-
-    // Get device MAC address
-    try {
-      const deviceId = await Device.getId()
-      shared.deviceMACAddress = deviceId.identifier
-    } catch (error) {
-      console.error("Failed to get device ID:", error)
-      shared.deviceMACAddress = "Unknown"
-    }
-
-    getSystemConfigurationFromFile()
-  } catch (error) {
-    console.error("serialNoFileNotFound: File creation failed!", error)
-    showDialog("Failed to create serial number file: " + error.message)
-  }
 }
 
 async function getSystemConfigurationFromFile() {
@@ -652,55 +777,163 @@ async function createCMSDataFile(cmsDataFileName) {
     }
 }
 
+// async function initSystem() {
+//     var commonCMS = shared.cmsJSON.cmsJSONdata.common;
+//     // Load the loading spinner
+//     if(commonCMS.loadingSpinner != undefined) {
+//         $("#loadingmessage").addClass(commonCMS.loadingSpinner.spinnerClass);
+//         $("#spinnerImage").addClass(commonCMS.loadingSpinner.imageClass);
+//         $("#spinnerImage").html(commonCMS.loadingSpinner.image);
+//     }
+
+//     if(commonCMS.uploadingSpinner != undefined) {
+//         $("#uploadingmessage").addClass(commonCMS.uploadingSpinner.spinnerClass);
+//         $("#uploaderMessageArea").addClass(commonCMS.uploadingSpinner.messageAreaClass);
+//         $("#uploaderImage").addClass(commonCMS.uploadingSpinner.imageClass);
+//         $("#uploaderImage").html(commonCMS.uploadingSpinner.image);
+//     }
+
+//     window.onerror = function(message, source, lineno, colno, error) {
+//         console.log("message: "+message+", source: "+source+", lineno: "+lineno+", colno"+colno+", error: "+error);
+//         if(message.includes("ReferenceError") && message.includes("not defined")) {
+//             showDialog("Error! This function is not supported in current version. Please update your app.\n"+"message: "+message+", source: "+source+", lineno: "+lineno+", colno"+colno+", error: "+error);
+//         }
+//     }
+//     if ((shared.systemConfiguration.systemInfo.inAppUpdateEnabled != undefined) && (shared.systemConfiguration.systemInfo.inAppUpdateEnabled == true)) {
+//         checkAppUpdate();
+//     }
+
+//     closeDialogBox();
+//     displaySection("none", "none", false, false);
+
+//     //  qrcode = new QRCode(document.getElementById("qrcode"), {
+//     //     width: 400,
+//     //     height: 400,
+//     //     colorDark: "#000000",
+//     //     colorLight: "#ffffff",
+//     //     correctLevel: QRCode.CorrectLevel.M
+//     // });
+
+//     userFirstName = "";
+//     observeResize();
+//     viewHome();
+
+//     if((shared.systemConfiguration.systemInfo.mqttEnabled != undefined) && (shared.systemConfiguration.systemInfo.mqttEnabled != null) &&
+//         (shared.systemConfiguration.systemInfo.mqttEnabled == "true"))
+//     {
+//         console.log("Settings >> initSystem > Initializing MQTT Client!");
+//         //initMqttClient();
+//     }
+
+// }
+
 async function initSystem() {
-    var commonCMS = shared.cmsJSON.cmsJSONdata.common;
-    // Load the loading spinner
-    if(commonCMS.loadingSpinner != undefined) {
+    console.log('initSystem starting!');
+
+    const commonCMS = shared.cmsJSON.cmsJSONdata.common;
+
+    /* ----------------------------------------------------------
+     * 1. Initialize Loading Spinner
+     * ---------------------------------------------------------- */
+    if (commonCMS.loadingSpinner !== undefined) {
+        console.log('Initialize loading spinner!');
         $("#loadingmessage").addClass(commonCMS.loadingSpinner.spinnerClass);
         $("#spinnerImage").addClass(commonCMS.loadingSpinner.imageClass);
         $("#spinnerImage").html(commonCMS.loadingSpinner.image);
     }
 
-    if(commonCMS.uploadingSpinner != undefined) {
+    if (commonCMS.uploadingSpinner !== undefined) {
+        console.log('Initialize uploading spinner!');
         $("#uploadingmessage").addClass(commonCMS.uploadingSpinner.spinnerClass);
         $("#uploaderMessageArea").addClass(commonCMS.uploadingSpinner.messageAreaClass);
         $("#uploaderImage").addClass(commonCMS.uploadingSpinner.imageClass);
         $("#uploaderImage").html(commonCMS.uploadingSpinner.image);
     }
 
+    /* ----------------------------------------------------------
+     * 2. Global Error Handler (same as Cordova)
+     * ---------------------------------------------------------- */
+    console.log('Initialize error handler!');
     window.onerror = function(message, source, lineno, colno, error) {
-        console.log("message: "+message+", source: "+source+", lineno: "+lineno+", colno"+colno+", error: "+error);
-        if(message.includes("ReferenceError") && message.includes("not defined")) {
-            showDialog("Error! This function is not supported in current version. Please update your app.\n"+"message: "+message+", source: "+source+", lineno: "+lineno+", colno"+colno+", error: "+error);
+        console.error("message: " + message + ", source: " + source + ", lineno: " + lineno + ", colno" + colno + ", error: " + error);
+
+        if (message.includes("ReferenceError") && message.includes("not defined")) {
+            showDialog(
+                "Error! This function is not supported in current version. Please update your app.\n" +
+                "message: " + message + ", source: " + source + ", lineno: " + lineno + ", colno" + colno + ", error: " + error
+            );
         }
-    }
-    if ((shared.systemConfiguration.systemInfo.inAppUpdateEnabled != undefined) && (shared.systemConfiguration.systemInfo.inAppUpdateEnabled == true)) {
+    };
+
+    /* ----------------------------------------------------------
+     * 3. In-App Update Check (same as Cordova logic)
+     * ---------------------------------------------------------- */
+    if (
+        shared.systemConfiguration.systemInfo.inAppUpdateEnabled !== undefined &&
+        shared.systemConfiguration.systemInfo.inAppUpdateEnabled === true &&
+        window.networkOffline === false 
+    ) {
         checkAppUpdate();
     }
 
+    /* ----------------------------------------------------------
+     * 4. Initial UI Reset (same as Cordova)
+     * ---------------------------------------------------------- */
     closeDialogBox();
     displaySection("none", "none", false, false);
 
-    //  qrcode = new QRCode(document.getElementById("qrcode"), {
-    //     width: 400,
-    //     height: 400,
-    //     colorDark: "#000000",
-    //     colorLight: "#ffffff",
-    //     correctLevel: QRCode.CorrectLevel.M
-    // });
+    /* ----------------------------------------------------------
+     * 5. Initialize QR Code (restored from Cordova)
+     * ---------------------------------------------------------- */
+    console.log("Initializing QR code for the device!");
+    qrcode = new QRCode(document.getElementById("qrcode"), {
+        width: 400,
+        height: 400,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+    });
 
+    /* ----------------------------------------------------------
+     * 6. User Info
+     * ---------------------------------------------------------- */
     userFirstName = "";
+
+    /* ----------------------------------------------------------
+     * 7. Resize Observer + Home Screen
+     * ---------------------------------------------------------- */
     observeResize();
+    console.log("Calling viewHome()!");
     viewHome();
 
-    if((shared.systemConfiguration.systemInfo.mqttEnabled != undefined) && (shared.systemConfiguration.systemInfo.mqttEnabled != null) &&
-        (shared.systemConfiguration.systemInfo.mqttEnabled == "true"))
-    {
+    /* ----------------------------------------------------------
+     * 8. MQTT Initialization (Cordova logic restored)
+     * ---------------------------------------------------------- */
+    if (
+        shared.systemConfiguration.systemInfo.mqttEnabled !== undefined &&
+        shared.systemConfiguration.systemInfo.mqttEnabled !== null &&
+        shared.systemConfiguration.systemInfo.mqttEnabled === "true"
+    ) {
         console.log("Settings >> initSystem > Initializing MQTT Client!");
-        //initMqttClient();
+        // initMqttClient();
     }
 
+    /* ----------------------------------------------------------
+     * 9. (Optional) Kiosk Plugin Logic from Cordova
+     * ---------------------------------------------------------- */
+    // KioskPlugin.isInKiosk(function(isInKiosk){ console.log("Is in Kiosk: "+isInKiosk) });
+    // KioskPlugin.isSetAsLauncher(function(isLauncher){ console.log("Is Launcher: "+isLauncher) });
+    // KioskPlugin.setAllowedKeys([24, 25]); // KEYCODE_VOLUME_UP, KEYCODE_VOLUME_DOWN
+
+    /* ----------------------------------------------------------
+     * 10. Other Legacy Functions from Cordova
+     * ---------------------------------------------------------- */
+    // AppIdleTime();
+    // sendVoice();
+    // getProductCategory();
+    // loadVideoPlayer("../CMS/Yashi_Group_Profile.36.mp4");
 }
+
 
 
 function checkAppUpdate() {
@@ -884,152 +1117,295 @@ function updateAppNow() {
 //     }
 // }
 
-async function checkConfigUpdate() {
-    try {
-        console.log("🔍 [checkConfigUpdate] Start");
+// async function checkConfigUpdate() {
+//     try {
+//         console.log("🔍 [checkConfigUpdate] Start");
 
-        // Step 1: Prepare Payload
-        const data = { serialno: shared.deviceSerialNumber };
-        console.log("📦 [Payload] serialno =", data.serialno);
+//         // Step 1: Prepare Payload
+//         const data = { serialno: shared.deviceSerialNumber };
+//         console.log("📦 [Payload] serialno =", data.serialno);
 
-        // Step 2: Construct URL
-        const url = constructUrl("/api/restgetdevicesetting");
-        console.log("🌐 [URL] Constructed URL:", url);
+//         // Step 2: Construct URL
+//         const url = constructUrl("/api/restgetdevicesetting");
+//         console.log("🌐 [URL] Constructed URL:", url);
 
-        // Step 3: Build Request Options
-        const requestOptions = await buildRequestOptions(url, "GET", data);
-        console.log("🛠️ [Request Options] =", requestOptions);
+//         // Step 3: Build Request Options
+//         const requestOptions = await buildRequestOptions(url, "GET", data);
+//         console.log("🛠️ [Request Options] =", requestOptions);
 
-        if (!requestOptions) {
-            console.warn("⚠️ [Abort] requestOptions is undefined or invalid.");
-            return;
-        }
+//         if (!requestOptions) {
+//             console.warn("⚠️ [Abort] requestOptions is undefined or invalid.");
+//             return;
+//         }
 
-        // Step 4: Make HTTP Request (new success/failure style)
-        Http.request(requestOptions)
-            .then(async (response) => {
-                console.log("📨 [HTTP Response] Raw Response Object:", response);
+//         // Step 4: Make HTTP Request (new success/failure style)
+//         Http.request(requestOptions)
+//             .then(async (response) => {
+//                 console.log("📨 [HTTP Response] Raw Response Object:", response);
 
-                // Step 5: Validate and Parse Response
-                if (isValidResponse(response, "restgetdevicesetting") && response.data) {
-                    console.log("✅ [Valid Response] Passed validation check.");
+//                 // Step 5: Validate and Parse Response
+//                 if (isValidResponse(response, "restgetdevicesetting") && response.data) {
+//                     console.log("✅ [Valid Response] Passed validation check.");
 
-                    let config;
-                    try {
-                        config = typeof response.data === 'string'
-                            ? JSON.parse(response.data)
-                            : response.data;
-                        console.log("🧾 [Config Parsed] config =", config);
-                    } catch (e) {
-                        console.warn("❗ [Fallback Parse] Using raw response data as config:", response.data);
-                        config = response.data;
-                    }
+//                     let config;
+//                     try {
+//                         config = typeof response.data === 'string'
+//                             ? JSON.parse(response.data)
+//                             : response.data;
+//                         console.log("🧾 [Config Parsed] config =", config);
+//                     } catch (e) {
+//                         console.warn("❗ [Fallback Parse] Using raw response data as config:", response.data);
+//                         config = response.data;
+//                     }
 
-                    // Step 6: Parse config.data → infoJSON
-                    try {
-                        infoJSON = JSON.parse(config.data);
-                        console.log("📁 [Parsed infoJSON] =", infoJSON);
-                    } catch (err) {
-                        console.error("❌ [Parse Failed] Could not parse config.data:", config.data, err);
-                        return;
-                    }
+//                     // Step 6: Parse config.data → infoJSON
+//                     try {
+//                         infoJSON = JSON.parse(config.data);
+//                         console.log("📁 [Parsed infoJSON] =", infoJSON);
+//                     } catch (err) {
+//                         console.error("❌ [Parse Failed] Could not parse config.data:", config.data, err);
+//                         return;
+//                     }
 
-                    // Step 7: Get App Info
-                    const appInfo = await App.getInfo();
-                    console.log("📱 [App Info] =", appInfo);
+//                     // Step 7: Get App Info
+//                     const appInfo = await App.getInfo();
+//                     console.log("📱 [App Info] =", appInfo);
 
-                    const versionStr = appInfo.version || "0.0.0";
-                    console.log("🔢 [Version String] =", versionStr);
+//                     const versionStr = appInfo.version || "0.0.0";
+//                     console.log("🔢 [Version String] =", versionStr);
 
-                    const version = parseInt(versionStr.replace(/\./g, '').padEnd(5, '0'));
-                    console.log("🔢 [Parsed App Version Code] =", version);
+//                     const version = parseInt(versionStr.replace(/\./g, '').padEnd(5, '0'));
+//                     console.log("🔢 [Parsed App Version Code] =", version);
 
-                    const cmsVersionVal = convertVersionVal(infoJSON.cmsInfo.cmsVersion);
-                    const cssVersionVal = convertVersionVal(infoJSON.cmsInfo.cssVersion);
+//                     const cmsVersionVal = convertVersionVal(infoJSON.cmsInfo.cmsVersion);
+//                     const cssVersionVal = convertVersionVal(infoJSON.cmsInfo.cssVersion);
 
-                    console.log("📊 [Version Codes]");
-                    console.log("   - App Version Code:", version);
-                    console.log("   - CMS Version:", infoJSON.cmsInfo.cmsVersion, "→", cmsVersionVal);
-                    console.log("   - CSS Version:", infoJSON.cmsInfo.cssVersion, "→", cssVersionVal);
+//                     console.log("📊 [Version Codes]");
+//                     console.log("   - App Version Code:", version);
+//                     console.log("   - CMS Version:", infoJSON.cmsInfo.cmsVersion, "→", cmsVersionVal);
+//                     console.log("   - CSS Version:", infoJSON.cmsInfo.cssVersion, "→", cssVersionVal);
 
-                    // Step 8: Fallback version enforcement
-                    if (version === 10000 || version >= 10100) {
-                        if (cmsVersionVal < 20001) {
-                            console.warn("🛑 [Fallback] Forcing CMS version to 2.0.1");
-                            infoJSON.cmsInfo.cmsFileName = "CMS-20001.json";
-                            infoJSON.cmsInfo.cmsVersion = "2.0.1";
-                        }
-                        if (cssVersionVal < 20001) {
-                            console.warn("🛑 [Fallback] Forcing CSS version to 2.0.1");
-                            infoJSON.cmsInfo.cssFileName = "STYLECSS-20001.css";
-                            infoJSON.cmsInfo.cssVersion = "2.0.1";
-                        }
-                    }
+//                     // Step 8: Fallback version enforcement
+//                     if (version === 10000 || version >= 10100) {
+//                         if (cmsVersionVal < 20001) {
+//                             console.warn("🛑 [Fallback] Forcing CMS version to 2.0.1");
+//                             infoJSON.cmsInfo.cmsFileName = "CMS-20001.json";
+//                             infoJSON.cmsInfo.cmsVersion = "2.0.1";
+//                         }
+//                         if (cssVersionVal < 20001) {
+//                             console.warn("🛑 [Fallback] Forcing CSS version to 2.0.1");
+//                             infoJSON.cmsInfo.cssFileName = "STYLECSS-20001.css";
+//                             infoJSON.cmsInfo.cssVersion = "2.0.1";
+//                         }
+//                     }
 
-                    // Step 9: Version Mismatch Check
-                    const updateRequired =
-                        infoJSON.systemInfo.systemVersion !== shared.systemConfiguration.systemInfo.systemVersion ||
-                        infoJSON.systemInfo.systemTimestamp !== shared.systemConfiguration.systemInfo.systemTimestamp ||
-                        infoJSON.cmsInfo.cmsVersion !== shared.systemConfiguration.cmsInfo.cmsVersion ||
-                        infoJSON.cmsInfo.cmsTimestamp !== shared.systemConfiguration.cmsInfo.cmsTimestamp ||
-                        infoJSON.cmsInfo.cssVersion !== shared.systemConfiguration.cmsInfo.cssVersion ||
-                        infoJSON.cmsInfo.cssTimestamp !== shared.systemConfiguration.cmsInfo.cssTimestamp ||
-                        infoJSON.appInfo.appVersion !== shared.systemConfiguration.appInfo.appVersion ||
-                        infoJSON.appInfo.appTimestamp !== shared.systemConfiguration.appInfo.appTimeStamp;
+//                     // Step 9: Version Mismatch Check
+//                     const updateRequired =
+//                         infoJSON.systemInfo.systemVersion !== shared.systemConfiguration.systemInfo.systemVersion ||
+//                         infoJSON.systemInfo.systemTimestamp !== shared.systemConfiguration.systemInfo.systemTimestamp ||
+//                         infoJSON.cmsInfo.cmsVersion !== shared.systemConfiguration.cmsInfo.cmsVersion ||
+//                         infoJSON.cmsInfo.cmsTimestamp !== shared.systemConfiguration.cmsInfo.cmsTimestamp ||
+//                         infoJSON.cmsInfo.cssVersion !== shared.systemConfiguration.cmsInfo.cssVersion ||
+//                         infoJSON.cmsInfo.cssTimestamp !== shared.systemConfiguration.cmsInfo.cssTimestamp ||
+//                         infoJSON.appInfo.appVersion !== shared.systemConfiguration.appInfo.appVersion ||
+//                         infoJSON.appInfo.appTimestamp !== shared.systemConfiguration.appInfo.appTimeStamp;
 
-                    console.log("🔍 [Update Check]");
-                    console.log("   - System Version:", infoJSON.systemInfo.systemVersion, "vs", shared.systemConfiguration.systemInfo.systemVersion);
-                    console.log("   - System Timestamp:", infoJSON.systemInfo.systemTimestamp, "vs", shared.systemConfiguration.systemInfo.systemTimestamp);
-                    console.log("   - CMS Version:", infoJSON.cmsInfo.cmsVersion, "vs", shared.systemConfiguration.cmsInfo.cmsVersion);
-                    console.log("   - CMS Timestamp:", infoJSON.cmsInfo.cmsTimestamp, "vs", shared.systemConfiguration.cmsInfo.cmsTimestamp);
-                    console.log("   - CSS Version:", infoJSON.cmsInfo.cssVersion, "vs", shared.systemConfiguration.cmsInfo.cssVersion);
-                    console.log("   - CSS Timestamp:", infoJSON.cmsInfo.cssTimestamp, "vs", shared.systemConfiguration.cmsInfo.cssTimestamp);
-                    console.log("   - App Version:", infoJSON.appInfo.appVersion, "vs", shared.systemConfiguration.appInfo.appVersion);
-                    console.log("   - App Timestamp:", infoJSON.appInfo.appTimestamp, "vs", shared.systemConfiguration.appInfo.appTimeStamp);
-                    console.log("🔧 [Update Required] =", updateRequired);
+//                     console.log("🔍 [Update Check]");
+//                     console.log("   - System Version:", infoJSON.systemInfo.systemVersion, "vs", shared.systemConfiguration.systemInfo.systemVersion);
+//                     console.log("   - System Timestamp:", infoJSON.systemInfo.systemTimestamp, "vs", shared.systemConfiguration.systemInfo.systemTimestamp);
+//                     console.log("   - CMS Version:", infoJSON.cmsInfo.cmsVersion, "vs", shared.systemConfiguration.cmsInfo.cmsVersion);
+//                     console.log("   - CMS Timestamp:", infoJSON.cmsInfo.cmsTimestamp, "vs", shared.systemConfiguration.cmsInfo.cmsTimestamp);
+//                     console.log("   - CSS Version:", infoJSON.cmsInfo.cssVersion, "vs", shared.systemConfiguration.cmsInfo.cssVersion);
+//                     console.log("   - CSS Timestamp:", infoJSON.cmsInfo.cssTimestamp, "vs", shared.systemConfiguration.cmsInfo.cssTimestamp);
+//                     console.log("   - App Version:", infoJSON.appInfo.appVersion, "vs", shared.systemConfiguration.appInfo.appVersion);
+//                     console.log("   - App Timestamp:", infoJSON.appInfo.appTimestamp, "vs", shared.systemConfiguration.appInfo.appTimeStamp);
+//                     console.log("🔧 [Update Required] =", updateRequired);
 
-                    // Step 10: Show confirmation dialog if update is needed
-                    if (updateRequired) {
-                        console.log("📤 [Prompt Update] Showing confirmation dialog.");
-                        showConfirmDialog({
-                            message: "New update available for your system configuration<br>Update now?",
-                            yesLabel: "Update",
-                            noLabel: "Cancel",
-                            onYes: () => followUpdateOrder('updateSystemConfiguration', infoJSON),
-                            onNo: () => console.log("Update cancelled")
-                        });
-                    } else {
-                        console.log("✅ [No Update Required] Configuration is up to date.");
-                    }
+//                     // Step 10: Show confirmation dialog if update is needed
+//                     if (updateRequired) {
+//                         console.log("📤 [Prompt Update] Showing confirmation dialog.");
+//                         showConfirmDialog({
+//                             message: "New update available for your system configuration<br>Update now?",
+//                             yesLabel: "Update",
+//                             noLabel: "Cancel",
+//                             onYes: () => followUpdateOrder('updateSystemConfiguration', infoJSON),
+//                             onNo: () => console.log("Update cancelled")
+//                         });
+//                     } else {
+//                         console.log("✅ [No Update Required] Configuration is up to date.");
+//                     }
 
-                    // Step 11: Update company message if any
-                    let companyMsgElem = document.getElementById("homeSection1Content");
-                    if (companyMsgElem !== null) {
-                        const message = infoJSON.cmsInfo.homeMessaging;
-                        console.log("💬 [Company Message] =", message);
-                        if (message && message.length > 0) {
-                            $("#homeSection1Content").html(message);
-                        }
-                    }
+//                     // Step 11: Update company message if any
+//                     let companyMsgElem = document.getElementById("homeSection1Content");
+//                     if (companyMsgElem !== null) {
+//                         const message = infoJSON.cmsInfo.homeMessaging;
+//                         console.log("💬 [Company Message] =", message);
+//                         if (message && message.length > 0) {
+//                             $("#homeSection1Content").html(message);
+//                         }
+//                     }
 
-                    // Step 12: UI height adjustment
-                    console.log("📐 [Adjust Module Heights]");
-                    fixModuleHeight("headerSection, footerSection, homeSection1", -50, "homeSection3");
+//                     // Step 12: UI height adjustment
+//                     console.log("📐 [Adjust Module Heights]");
+//                     fixModuleHeight("headerSection, footerSection, homeSection1", -50, "homeSection3");
 
-                } else {
-                    console.warn("⚠️ [Invalid Response] Missing or incorrect 'data' from server.");
+//                 } else {
+//                     console.warn("⚠️ [Invalid Response] Missing or incorrect 'data' from server.");
+//                 }
+//             })
+//             .catch((error) => {
+//                 console.error("💥 [Exception] checkConfigUpdate failed:", error);
+//                 showDialog("Server didn't respond!");
+//             });
+
+//     } catch (error) {
+//         console.error("💥 [Outer Exception] checkConfigUpdate failed:", error);
+//         showDialog("Server didn't respond!");
+//     }
+// }
+
+function checkConfigUpdate() {
+    console.log("🔍 [checkConfigUpdate] Start");
+
+    // Step 1: Prepare Payload
+    const data = { serialno: shared.deviceSerialNumber };
+    console.log("📦 [Payload] serialno =", data.serialno);
+
+    // Step 2: Construct URL
+    const url = constructUrl("/api/restgetdevicesetting");
+    console.log("🌐 [URL] Constructed URL:", url);
+
+    // Step 3: Build Request Options (still async)
+    buildRequestOptions(url, "GET", data)
+        .then((requestOptions) => {
+            console.log("🛠️ [Request Options] =", requestOptions);
+
+            if (!requestOptions) {
+                console.warn("⚠️ [Abort] requestOptions is undefined or invalid.");
+                return;
+            }
+
+            // Step 4: MAKE HTTP REQUEST (NO await here)
+            return Http.request(requestOptions);
+        })
+        .then((response) => {
+            if (!response) return;
+
+            console.log("📨 [HTTP Response] Raw Response Object:", response);
+
+            // Step 5: Validate and Parse Response
+            if (!isValidResponse(response, "restgetdevicesetting") || !response.data) {
+                console.warn("⚠️ [Invalid Response] Missing or incorrect 'data' from server.");
+                return;
+            }
+
+            console.log("✅ [Valid Response] Passed validation check.");
+
+            let config;
+            try {
+                config =
+                    typeof response.data === "string"
+                        ? JSON.parse(response.data)
+                        : response.data;
+
+                console.log("🧾 [Config Parsed] config =", config);
+            } catch (e) {
+                console.warn("❗ [Fallback Parse] Using raw response data as config:", response.data);
+                config = response.data;
+            }
+
+            // Step 6: Parse config.data → infoJSON
+            try {
+                infoJSON = JSON.parse(config.data);
+                console.log("📁 [Parsed infoJSON] =", infoJSON);
+            } catch (err) {
+                console.error("❌ [Parse Failed] Could not parse config.data:", config.data, err);
+                return;
+            }
+
+            // Step 7: GET APP INFO (async but NOT HTTP)
+            return App.getInfo();
+        })
+        .then((appInfo) => {
+            if (!appInfo) return;
+
+            console.log("📱 [App Info] =", appInfo);
+
+            const versionStr = appInfo.version || "0.0.0";
+            console.log("🔢 [Version String] =", versionStr);
+
+            const version = parseInt(versionStr.replace(/\./g, "").padEnd(5, "0"));
+            console.log("🔢 [Parsed App Version Code] =", version);
+
+            const cmsVersionVal = convertVersionVal(infoJSON.cmsInfo.cmsVersion);
+            const cssVersionVal = convertVersionVal(infoJSON.cmsInfo.cssVersion);
+
+            console.log("📊 [Version Codes]");
+            console.log("   - App Version Code:", version);
+            console.log("   - CMS Version:", infoJSON.cmsInfo.cmsVersion, "→", cmsVersionVal);
+            console.log("   - CSS Version:", infoJSON.cmsInfo.cssVersion, "→", cssVersionVal);
+
+            // Step 8: Fallback version enforcement
+            if (version === 10000 || version >= 10100) {
+                if (cmsVersionVal < 20001) {
+                    console.warn("🛑 [Fallback] Forcing CMS version to 2.0.1");
+                    infoJSON.cmsInfo.cmsFileName = "CMS-20001.json";
+                    infoJSON.cmsInfo.cmsVersion = "2.0.1";
                 }
-            })
-            .catch((error) => {
-                console.error("💥 [Exception] checkConfigUpdate failed:", error);
-                showDialog("Server didn't respond!");
-            });
+                if (cssVersionVal < 20001) {
+                    console.warn("🛑 [Fallback] Forcing CSS version to 2.0.1");
+                    infoJSON.cmsInfo.cssFileName = "STYLECSS-20001.css";
+                    infoJSON.cmsInfo.cssVersion = "2.0.1";
+                }
+            }
 
-    } catch (error) {
-        console.error("💥 [Outer Exception] checkConfigUpdate failed:", error);
-        showDialog("Server didn't respond!");
-    }
+            // Step 9: Version mismatch check
+            const updateRequired =
+                infoJSON.systemInfo.systemVersion !== shared.systemConfiguration.systemInfo.systemVersion ||
+                infoJSON.systemInfo.systemTimestamp !== shared.systemConfiguration.systemInfo.systemTimestamp ||
+                infoJSON.cmsInfo.cmsVersion !== shared.systemConfiguration.cmsInfo.cmsVersion ||
+                infoJSON.cmsInfo.cmsTimestamp !== shared.systemConfiguration.cmsInfo.cmsTimestamp ||
+                infoJSON.cmsInfo.cssVersion !== shared.systemConfiguration.cmsInfo.cssVersion ||
+                infoJSON.cmsInfo.cssTimestamp !== shared.systemConfiguration.cmsInfo.cssTimestamp ||
+                infoJSON.appInfo.appVersion !== shared.systemConfiguration.appInfo.appVersion ||
+                infoJSON.appInfo.appTimestamp !== shared.systemConfiguration.appInfo.appTimeStamp;
+
+            console.log("🔧 [Update Required] =", updateRequired);
+
+            // Step 10: Confirm update
+            if (updateRequired) {
+                console.log("📤 [Prompt Update] Showing confirmation dialog.");
+                showConfirmDialog({
+                    message: "New update available for your system configuration<br>Update now?",
+                    yesLabel: "Update",
+                    noLabel: "Cancel",
+                    onYes: () => followUpdateOrder("updateSystemConfiguration", infoJSON),
+                    onNo: () => console.log("Update cancelled"),
+                });
+            } else {
+                console.log("✅ [No Update Required] Configuration is up to date.");
+            }
+
+            // Step 11: Update UI message
+            let companyMsgElem = document.getElementById("homeSection1Content");
+            if (companyMsgElem !== null) {
+                const message = infoJSON.cmsInfo.homeMessaging;
+                console.log("💬 [Company Message] =", message);
+                if (message && message.length > 0) {
+                    $("#homeSection1Content").html(message);
+                }
+            }
+
+            // Step 12: UI height adjustment
+            console.log("📐 [Adjust Module Heights]");
+            fixModuleHeight("headerSection, footerSection, homeSection1", -50, "homeSection3");
+        })
+        .catch((error) => {
+            console.error("💥 [Exception] checkConfigUpdate failed:", error);
+            showDialog("Server didn't respond!");
+        });
 }
+
 
 
 async function updateSystemConfiguration() {
@@ -1279,48 +1655,48 @@ async function updateStyleCSSData() {
 
 
 
-async function updateApp() {
-    try {
-        const fileURL = infoJSON.systemInfo.cdnURL + infoJSON.appInfo.appPath + infoJSON.appInfo.appFileName;
-        const fileName = infoJSON.appInfo.appFileName;
-        const folderPath = shared.systemConfiguration.systemInfo.localAppFolderDigiSign;
-        const localFileNameWithPath = folderPath + '/' + fileName;
+// async function updateApp() {
+//     try {
+//         const fileURL = infoJSON.systemInfo.cdnURL + infoJSON.appInfo.appPath + infoJSON.appInfo.appFileName;
+//         const fileName = infoJSON.appInfo.appFileName;
+//         const folderPath = shared.systemConfiguration.systemInfo.localAppFolderDigiSign;
+//         const localFileNameWithPath = folderPath + '/' + fileName;
 
-        showDialog("It may take few minutes.. DO NOT power off!!! System will automatically restart.");
+//         showDialog("It may take few minutes.. DO NOT power off!!! System will automatically restart.");
 
-        // Download the APK file
-        const response = await Http.downloadFile({
-            url: fileURL,
-            filePath: localFileNameWithPath,
-            fileDirectory: Directory.Data
-        });
+//         // Download the APK file
+//         const response = await Http.downloadFile({
+//             url: fileURL,
+//             filePath: localFileNameWithPath,
+//             fileDirectory: Directory.Data
+//         });
 
-        // Check if file exists after download
-        try {
-            await Filesystem.stat({
-                path: localFileNameWithPath,
-                directory: Directory.Data
-            });
+//         // Check if file exists after download
+//         try {
+//             await Filesystem.stat({
+//                 path: localFileNameWithPath,
+//                 directory: Directory.Data
+//             });
 
-            console.log("updateApp: Downloaded complete!");
+//             console.log("updateApp: Downloaded complete!");
 
-            // Attempt APK install (requires plugin)
-            if (Capacitor.getPlatform() === 'android') {
-                // You MUST implement or install a plugin for APK installation
-                // For now, just log
-                console.log("APK installation requires a custom plugin");
-                // Example if you had a plugin:
-                // await ApkInstaller.install({ path: localFileNameWithPath });
-            }
-        } catch (fileError) {
-            console.log("updateApp: Downloaded but could not find file locally: " + JSON.stringify(fileError));
-        }
+//             // Attempt APK install (requires plugin)
+//             if (Capacitor.getPlatform() === 'android') {
+//                 // You MUST implement or install a plugin for APK installation
+//                 // For now, just log
+//                 console.log("APK installation requires a custom plugin");
+//                 // Example if you had a plugin:
+//                 // await ApkInstaller.install({ path: localFileNameWithPath });
+//             }
+//         } catch (fileError) {
+//             console.log("updateApp: Downloaded but could not find file locally: " + JSON.stringify(fileError));
+//         }
 
-    } catch (error) {
-        followUpdateOrder("");
-        console.log("updateApp: download error (file not found!): " + JSON.stringify(error));
-    }
-}
+//     } catch (error) {
+//         followUpdateOrder("");
+//         console.log("updateApp: download error (file not found!): " + JSON.stringify(error));
+//     }
+// }
 
 // function followUpdateOrder(order) {
 //     if (order == "updateSystemConfiguration") {
@@ -1358,6 +1734,199 @@ async function updateApp() {
 
 
 // helper functions are defined below 
+
+
+async function updateApp() {
+    try {
+        const fileURL = infoJSON.systemInfo.cdnURL + infoJSON.appInfo.appPath + infoJSON.appInfo.appFileName;
+        const fileName = infoJSON.appInfo.appFileName;
+
+        showDialog("It may take few minutes... DO NOT power off!");
+
+        console.log("Downloading APK:", fileURL);
+
+        let response;
+        try {
+            response = await Http.downloadFile({
+                url: fileURL,
+                filePath: fileName,
+                fileDirectory: Directory.Data
+            });
+
+            console.log("DOWNLOAD RESPONSE:", response);
+        } catch (err) {
+            console.error("DOWNLOAD ERROR:", err);
+            showDialog("APK download failed! Check server URL.");
+            return;
+        }
+
+        if (!response || !response.path) {
+            console.error("Invalid download response:", response);
+            showDialog("Download failed. Server did not return a file.");
+            return;
+        }
+
+        let apkPath = response.path.replace("file://", "");
+        console.log("APK saved to:", apkPath);
+
+        await ApkInstaller.install({ path: apkPath });
+
+        console.log("Installer triggered.");
+
+    } catch (error) {
+        console.error("updateApp: download or install error:", error);
+        followUpdateOrder("");
+    }
+}
+
+/**
+ * Utility: convert ArrayBuffer -> base64
+ */
+function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
+
+async function isUrlReachable(url) {
+    try {
+        // try a HEAD request first
+        const res = await fetch(url, { method: 'HEAD' });
+        return res.ok;
+    } catch (e) {
+        // fallback: try GET but don't download body
+        try {
+            const res2 = await fetch(url, { method: 'GET' });
+            return res2.ok;
+        } catch (e2) {
+            console.warn("isUrlReachable error:", e2);
+            return false;
+        }
+    }
+}
+
+// async function updateApp() {
+//     try {
+//         // defensive checks for infoJSON/shared
+//         if (!infoJSON || !infoJSON.appInfo || !infoJSON.systemInfo) {
+//             console.error("updateApp: infoJSON is missing or invalid:", infoJSON);
+//             showDialog("Update failed: invalid update metadata.");
+//             return;
+//         }
+
+//         const fileURL = infoJSON.systemInfo.cdnURL + infoJSON.appInfo.appPath + infoJSON.appInfo.appFileName;
+//         const fileName = infoJSON.appInfo.appFileName;
+
+//         console.log("FINAL APK URL:", fileURL);
+//         showDialog("It may take a few minutes.. DO NOT power off!!! System will automatically restart.");
+
+//         // Quick URL reachability check (useful for S3 CORS or 404)
+//         const ok = await isUrlReachable(fileURL);
+//         if (!ok) {
+//             console.error("APK URL not reachable from device:", fileURL);
+//             showDialog("APK not reachable from device. Check network/S3 URL.");
+//             return;
+//         }
+
+//         // Attempt Http.downloadFile first (native)
+//         let downloadResponse = null;
+//         try {
+//             console.log("Calling Http.downloadFile...");
+//             downloadResponse = await Http.downloadFile({
+//                 url: fileURL,
+//                 filePath: fileName,
+//                 fileDirectory: Directory.Data
+//             });
+//             console.log("Http.downloadFile response:", downloadResponse);
+//         } catch (httpErr) {
+//             console.error("DOWNLOAD ERROR (Http.downloadFile) ->", httpErr);
+//             // do not return yet — we'll try fallback
+//         }
+
+//         // If native download didn't provide path, fallback to fetch + writeFile
+//         let apkPath = null;
+//         if (downloadResponse && (downloadResponse.path || downloadResponse.uri)) {
+//             // prefer path, fallback to uri
+//             apkPath = downloadResponse.path || downloadResponse.uri;
+//             console.log("Raw downloadResponse path/uri:", apkPath);
+//         }
+
+//         if (!apkPath) {
+//             console.log("Falling back to fetch + Filesystem.writeFile...");
+//             // fetch binary and write as base64
+//             try {
+//                 const resp = await fetch(fileURL);
+//                 if (!resp.ok) {
+//                     throw new Error("Fetch failed with status " + resp.status);
+//                 }
+//                 const arrayBuffer = await resp.arrayBuffer();
+//                 const base64Data = arrayBufferToBase64(arrayBuffer);
+
+//                 // write into Directory.Data
+//                 const writeRes = await Filesystem.writeFile({
+//                     path: fileName,
+//                     data: base64Data,
+//                     directory: Directory.Data,
+//                     recursive: true
+//                 });
+//                 console.log("Filesystem.writeFile result:", writeRes);
+
+//                 // attempt to get file uri
+//                 try {
+//                     const statRes = await Filesystem.getUri({
+//                         path: fileName,
+//                         directory: Directory.Data
+//                     });
+//                     apkPath = statRes.uri || statRes.path;
+//                     console.log("Filesystem.getUri:", statRes);
+//                 } catch (statErr) {
+//                     // Some Filesystem implementations return different fields
+//                     console.warn("Filesystem.getUri failed:", statErr);
+//                     // attempt common app-files path fallback
+//                     apkPath = "/data/data/" + Capacitor.getPackageName?.() + "/files/" + fileName;
+//                 }
+//             } catch (fetchErr) {
+//                 console.error("Fallback fetch/writeFile failed:", fetchErr);
+//                 showDialog("APK download failed. Check server and try again.");
+//                 return;
+//             }
+//         }
+
+//         // Normalize path: remove file:// prefix when present
+//         if (apkPath && apkPath.startsWith("file://")) {
+//             apkPath = apkPath.replace("file://", "");
+//         }
+
+//         console.log("Attempting to install APK at:", apkPath);
+
+//         // final guard
+//         if (!apkPath) {
+//             console.error("No valid APK path available after download attempts.");
+//             showDialog("Download didn't complete: no APK file.");
+//             return;
+//         }
+
+//         // Call plugin to install
+//         try {
+//             await ApkInstaller.install({ path: apkPath });
+//             console.log("APK install intent triggered.");
+//         } catch (installErr) {
+//             console.error("ApkInstaller.install error:", installErr);
+//             showDialog("Failed to launch installer: " + (installErr && installErr.message ? installErr.message : "unknown"));
+//             return;
+//         }
+
+//     } catch (err) {
+//         console.error("updateApp: unexpected error:", err);
+//         showDialog("Update failed unexpectedly.");
+//         followUpdateOrder("");
+//     }
+// }
+
 
 
 function followUpdateOrder(order, updatedInfoJSON) {
@@ -1417,10 +1986,10 @@ function followUpdateOrder(order, updatedInfoJSON) {
         console.log("   infoJSON.appInfo.appVersion:", infoJSON.appInfo.appVersion, 
                     "| shared.appVersion:", shared.systemConfiguration.appInfo.appVersion);
         console.log("   infoJSON.appInfo.appTimestamp:", infoJSON.appInfo.appTimestamp, 
-                    "| shared.appTimestamp:", shared.systemConfiguration.appInfo.appTimestamp);
+                    "| shared.appTimestamp:", shared.systemConfiguration.appInfo.appTimeStamp);
 
         if ((infoJSON.appInfo.appVersion != shared.systemConfiguration.appInfo.appVersion) ||
-            (infoJSON.appInfo.appTimestamp != shared.systemConfiguration.appInfo.appTimestamp)) {
+            (infoJSON.appInfo.appTimestamp != shared.systemConfiguration.appInfo.appTimeStamp)) {
             console.log("✅ App update needed → Calling updateApp()");
             updateApp();
         } else {
