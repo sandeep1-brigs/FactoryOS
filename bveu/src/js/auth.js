@@ -9,7 +9,7 @@ import { Preferences } from "@capacitor/preferences";
 
 import { shared, settingJson } from "./globals.js";
 import { displaySection, isValidResponse, buildRequestOptions, RequestOptions} from "./capacitor-welcome.js";
-import { showDialog,constructUrl , startAppIdleTimer , stopAppIdleTimer} from "./utility.js";
+import { showDialog,constructUrl , startAppIdleTimer , stopAppIdleTimer , checkDeviceRegistration} from "./utility.js";
 import { viewHome, clearFavouriteBtns, updateHomeButtonAcccess } from "./settings.js";
 import { displayBanner } from "./digiveu.js";
 
@@ -366,7 +366,7 @@ export function doLogin(callback) {
 
                     if (!deviceInfo) {
                         console.log("📡 [doLogin] Device info missing → Checking device registration...");
-                        // checkDeviceRegistration();
+                         checkDeviceRegistration();
                     }
 
                     // getUserNotifications();

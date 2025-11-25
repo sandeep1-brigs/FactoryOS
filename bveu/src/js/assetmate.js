@@ -11,7 +11,7 @@ import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 import { shared , s3PrivateUrl , s3PublicUrl  } from "./globals.js";
 import { displaySection , showConfirmDialog , buildRequestOptions , isValidResponse , RequestOptions  } from "./capacitor-welcome.js";
-import { showDialog , highlightHeaderTabMenu , fixModuleHeight , constructUrl , getSignedUrl , pauseVideos , initPinchZoom , getGeoPosition} from "./utility.js";
+import { showDialog , highlightHeaderTabMenu , fixModuleHeight , constructUrl , getSignedUrl , pauseVideos , initPinchZoom , getGeoPosition , updateAppRuntime} from "./utility.js";
 import { getMenuBar ,getNewToken } from "./settings.js";
 import { exitModules , viewContent } from "./content.js";
 import { createList } from "./list.js";

@@ -5,9 +5,11 @@ import { Http } from '@capacitor-community/http';
 import { Network } from '@capacitor/network';
 import { App } from '@capacitor/app';
 import $ from 'jquery';
+import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
+
 
 import { shared , s3PrivateUrl} from "./globals.js";
-import { showDialog, initAppRuntimeMonitor, closeDialogBox, getSignedUrl , initPinchZoom ,  constructUrl, convertVersionVal, fixModuleHeight , highlightHeaderTabMenu , populateImage , startAppIdleTimer } from "./utility.js";
+import { showDialog, initAppRuntimeMonitor, closeDialogBox, getSignedUrl , initPinchZoom ,  constructUrl, convertVersionVal, fixModuleHeight , highlightHeaderTabMenu , populateImage , startAppIdleTimer , updateAppRuntime} from "./utility.js";
 import { displaySection, buildRequestOptions, RequestOptions, isValidResponse, showConfirmDialog } from "./capacitor-welcome.js";
 import { viewLogin, apiRequestFailed } from "./auth.js";
 import {  exitModules } from "./content";
@@ -116,7 +118,7 @@ function getPipemarkLocations() {
 	//$("#location_search_input").val("");
 	searchType = "location";
 	$('#pipemark_searchbox').html('<input type="search" class="searchInput" id="pipemark_'+searchType+'_search_input" placeholder="Search '+searchType+'" /><button class="searchBtn" id="pipemark_'+searchType+'_searchbtn" onclick="searchPipemarkDepartmentLocationCategory()"><span class="material-symbols-outlined" style="font-size: 30px; padding: 5px 0;">search</span></button>');
-	searchContentDepartmentLocationCategory();
+	searchPipemarkDepartmentLocationCategory();
 }
 
 function getPipemarkDepartments() {
@@ -125,7 +127,7 @@ function getPipemarkDepartments() {
 	//$("#department_search_input").val("");
 	searchType = "department";
 	$('#pipemark_searchbox').html('<input type="search" class="searchInput" id="pipemark_'+searchType+'_search_input" placeholder="Search '+searchType+'" /><button class="searchBtn" id="pipemark_'+searchType+'_searchbtn" onclick="searchPipemarkDepartmentLocationCategory()"><span class="material-symbols-outlined" style="font-size: 30px; padding: 5px 0;">search</span></button>');
-	searchContentDepartmentLocationCategory();
+	searchPipemarkDepartmentLocationCategory();
 }
 
 function getPipemarkCategorys() {
@@ -134,7 +136,7 @@ function getPipemarkCategorys() {
 	//$("#category_search_input").val("");
 	searchType = "category";
 	$('#pipemark_searchbox').html('<input type="search" class="searchInput" id="pipemark_'+searchType+'_search_input" placeholder="Search '+searchType+'" /><button class="searchBtn" id="pipemark_'+searchType+'_searchbtn" onclick="searchPipemarkDepartmentLocationCategory()"><span class="material-symbols-outlined" style="font-size: 30px; padding: 5px 0;">search</span></button>');
-	searchContentDepartmentLocationCategory();
+	searchPipemarkDepartmentLocationCategory();
 }
 
 function searchPipemarkDepartmentLocationCategory(pageNumber = 1, pageSize = 50) {
@@ -455,54 +457,62 @@ function createPipemarkList(type) {
 }
 
 
-// the below is yet to be implemented
+async function scanPipemarkQRCode() {
 
-// async function scanPipemarkQRCode() {
-//     if (mCustomerDetailsJSON != null) {
-//         updateAppRuntime("pipeMark", "on", "ok");
+    if (shared.mCustomerDetailsJSON == null) {
+        showDialog("You need to login to access this resource!", "viewLogin('menuProcess')");
+        return;
+    }
 
-//         let displayOrientation = "portrait";
-//         if (window.screen.width > window.screen.height) {
-//             displayOrientation = "landscape";
-//         }
+    try {
+        // original logic
+        updateAppRuntime("pipeMark", "on", "ok");
 
-//         currentState = "viewScanner";
+        let displayOrientation = "portrait";
+        if (window.screenWidth > window.screenHeight) {
+            displayOrientation = "landscape";
+        }
 
-//         try {
-//             // Prepare the scanner
-//             await BarcodeScanner.checkPermission({ force: true });
-//             await BarcodeScanner.hideBackground(); // Make background transparent (scanner UI)
-            
-//             const result = await BarcodeScanner.startScan(); // Opens scanner
+        shared.currentState = "viewScanner";
 
-//             console.log("We got a barcode\n" +
-//                 "Result: " + result.content + "\n" +
-//                 "Format: " + result.format + "\n" +
-//                 "Cancelled: " + result.hasContent);
+        // 🔹 Request camera permission
+        const perm = await BarcodeScanner.requestPermissions();
+        if (perm.camera !== "granted") {
+            showDialog("Camera permission denied. Please allow camera access.");
+            return;
+        }
 
-//             if (result.hasContent && result.content.length > 0) {
-//                 let qrData = result.content;
-//                 if (qrData.startsWith('PM')) {
-//                     qrData = qrData.replace('PM', '');
-//                     if (!isNaN(qrData)) {
-//                         handlePipemarkQrCode(qrData);
-//                     }
-//                 }
-//             }
+        // 🔹 Start scanning
+        const result = await BarcodeScanner.scan({
+            formats: ['qr_code', 'pdf417'],
+        });
 
-//             // Cleanup after scan
-//             await BarcodeScanner.showBackground();
-//             await BarcodeScanner.stopScan();
+        console.log("Scan result:", result);
 
-//         } catch (error) {
-//             alert("Scanning failed: " + error);
-//             await BarcodeScanner.showBackground();
-//             await BarcodeScanner.stopScan();
-//         }
-//     } else {
-//         showDialog("You need to login to access this resource!", "viewLogin('menuProcess')");
-//     }
-// }
+        if (!result.barcodes || result.barcodes.length === 0) {
+            console.log("No barcode detected.");
+            return;
+        }
+
+        const codeData = result.barcodes[0].rawValue;
+        console.log("Scanned Value:", codeData);
+
+        // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+        // 🔥 ORIGINAL LOGIC PRESERVED
+        // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+        if (codeData && codeData.startsWith('PM')) {
+            let qrData = codeData.replace('PM', '');
+            if (!isNaN(qrData)) {
+                handlePipemarkQrCode(qrData);
+            }
+        }
+
+    } catch (err) {
+        alert("Scanning failed: " + err);
+        console.error(err);
+    }
+}
+
 
 function handlePipemarkQrCode(codeId) {
     // $('#loadingmessage').show();
@@ -1449,7 +1459,7 @@ function showPmlabelForm() {
 }
 
 
-function backPipemarkHandle() {
+export function backPipemarkHandle() {
 	if (shared.currentState == "displayPmlabelView") {
 		showPmlabelForm();
 	} else if (shared.currentState == "displayPmlabelForm") {
@@ -1505,7 +1515,7 @@ function backPipemarkHandle() {
 	} else if (currentState == "displayPmprojectList" || currentState == "viewScanner") {
 		showPmprojectList();
 	} else {
-		currentState = "";
+		shared.currentState = "";
 		unsavedData = false;
 		closePipemark();
 	}
@@ -1534,6 +1544,7 @@ window.viewPipemark = viewPipemark;
 window.exitPipemark = exitPipemark;
 window.displayPipemarkMenu = displayPipemarkMenu;
 window.viewPmprojects = viewPmprojects;
+window.scanPipemarkQRCode = scanPipemarkQRCode;
 window.viewAllPipemarks = viewAllPipemarks;
 window.getPipemarkLocations = getPipemarkLocations;
 window.getPipemarkDepartments = getPipemarkDepartments;

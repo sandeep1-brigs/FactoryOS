@@ -11,6 +11,7 @@ import { shared , s3PrivateUrl , s3PublicUrl } from "./globals.js";
 import { showDialog, initAppRuntimeMonitor, closeDialogBox, constructUrl, convertVersionVal, fixModuleHeight, startAppIdleTimer, stopAppIdleTimer } from "./utility.js";
 import { displaySection, buildRequestOptions, RequestOptions, isValidResponse, showConfirmDialog } from "./capacitor-welcome.js";
 import { viewLogin, apiRequestFailed } from "./auth.js";
+import { initSlider } from "./slider.js";
 
 
 const hardcodedHelpJson = 
@@ -415,10 +416,17 @@ function fallback(that, url) {
     that.src = newSrc;
 }
 
-function backHelpHandle() {
+export function backHelpHandle() {
     if (shared.currentState == "helpDetail") {
         viewHelpItems();
     } else {
         exitHelp();
     }
 }
+
+window.viewHelp = viewHelp;
+window.expandHelpTopics = expandHelpTopics;
+window.viewHelpDetail = viewHelpDetail;
+window.viewHelp2Detail = viewHelp2Detail;
+window.fallback = fallback;
+window.backHelpHandle = backHelpHandle;

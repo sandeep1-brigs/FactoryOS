@@ -9,145 +9,309 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 
 import { shared } from "./globals.js";
-import { showDialog, initAppRuntimeMonitor, closeDialogBox, constructUrl, convertVersionVal, fixModuleHeight , addBtnToFavourite ,removeBtnFromFavourite} from "./utility.js";
+import { showDialog,checkDeviceRegistration,  closeDialogBox, constructUrl, convertVersionVal, fixModuleHeight , addBtnToFavourite ,removeBtnFromFavourite , configureCustomBackButton} from "./utility.js";
 import { displaySection, buildRequestOptions, RequestOptions, isValidResponse, showConfirmDialog } from "./capacitor-welcome.js";
 import { viewLogin, apiRequestFailed } from "./auth.js";
+
+var deviceInfo = null;
+let networkOffline = false;
+
+// export async function viewHome() {
+//     console.log("[viewHome] Start");
+//     shared.currentRunningApp = 'home';
+   
+
+//     // if (deviceInfo == null) {
+//     //     console.log("[viewHome] deviceInfo is null. Checking device registration...");
+//     //     checkDeviceRegistration();
+//     // }
+
+//     try {
+//         var commonCMS = shared.cmsJSON.cmsJSONdata.common;
+//         var homeScreenSource = shared.cmsJSON.cmsJSONdata.homeScreen;
+
+        
+//         const appInfo = await App.getInfo();
+//         console.log("[viewHome] App Info:", appInfo);
+
+//         $('#appVersion').html(appInfo.version);
+
+//         if ($("#homeWindow").is(':empty')) {
+//             console.log("[viewHome] Home window is empty. Proceeding to populate content...");
+//             let prodHtml = "";
+            
+
+//             const versionParts = appInfo.version.split('.');
+//             const majorVersion = parseInt(versionParts[0]) || 0;
+//             const minorVersion = parseInt(versionParts[1]) || 0;
+//             const patchVersion = parseInt(versionParts[2]) || 0;
+//             const versionCode = majorVersion * 10000 + minorVersion * 100 + patchVersion;
+
+//             console.log("[viewHome] Parsed versionCode:", versionCode);
+
+//             if (commonCMS.mainBodyHtml.length && versionCode < 20000 && versionCode !== 10000) {
+//                 console.log("[viewHome] Using mainBodyHtml from CMS");
+//                 prodHtml = commonCMS.mainBodyHtml;
+//                 $("#homeWindow").html(prodHtml);
+//                 displaySection("homeSection", "block", true, true);
+//             } else {
+//                 console.log("[viewHome] Generating home screen dynamically");
+//                 // const homeScreenSource = shared.cmsJSON.cmsJSONdata.homeScreen;
+
+//                 if (homeScreenSource.assistPresent === true) {
+//                     console.log("[viewHome] Assist present. Adding assist div");
+//                     prodHtml += "<div id='assist'></div>";
+//                 }
+
+//                 function getNextSection(sectionIndex) {
+//                     const section = homeScreenSource.sectionList[sectionIndex];
+//                     console.log(`[viewHome] Processing section ${sectionIndex}`, section);
+
+//                     if (section.sectionStyle?.length) {
+//                         prodHtml += `<div id="homeSection${sectionIndex}" style="${section.sectionStyle}">`;
+//                         if (section.content?.startsWith('<')) {
+//                             prodHtml += section.content;
+//                         }
+//                     } else if (section.content?.length) {
+//                         if (section.content.startsWith('<')) {
+//                             prodHtml += `<div style="${section.content}">`;
+//                         }
+//                     }
+
+//                     if (Array.isArray(section.menuList) && section.menuList.length) {
+//                         function getNextMenu(menuIndex) {
+//                             const menu = section.menuList[menuIndex];
+//                             console.log(`[viewHome] Processing menu ${menuIndex}`, menu);
+
+//                             prodHtml += getMenuBar(menu, "homeHome");
+
+//                             if (menuIndex === section.menuList.length - 1) {
+//                                 if (Array.isArray(section.overlayList)) {
+//                                     section.overlayList.forEach((overlay, i) => {
+//                                         console.log(`[viewHome] Adding overlay ${i}`, overlay);
+//                                         prodHtml += overlay.htmlContent;
+//                                     });
+//                                 }
+
+//                                 prodHtml += '</div>';
+
+//                                 if (sectionIndex === homeScreenSource.sectionList.length - 1) {
+//                                     console.log("[viewHome] All sections processed. Injecting HTML...");
+//                                     $("#homeWindow").html(prodHtml);
+//                                     updateHome();
+
+//                                     if (versionCode === 10000 || versionCode >= 20000) {
+//                                         console.log("[viewHome] Hiding version notice");
+//                                         $("#versionnotice").hide();
+//                                     }
+//                                 } else {
+//                                     getNextSection(sectionIndex + 1);
+//                                 }
+//                             } else {
+//                                 getNextMenu(menuIndex + 1);
+//                             }
+//                         }
+
+//                         getNextMenu(0);
+//                     } else {
+//                         if (Array.isArray(section.overlayList)) {
+//                             section.overlayList.forEach((overlay, i) => {
+//                                 console.log(`[viewHome] Adding overlay ${i}`, overlay);
+//                                 prodHtml += overlay.htmlContent;
+//                             });
+//                         }
+
+//                         prodHtml += '</div>';
+
+//                         if (sectionIndex === homeScreenSource.sectionList.length - 1) {
+//                             console.log("[viewHome] All sections processed. Injecting HTML...");
+//                             $("#homeWindow").html(prodHtml);
+//                             updateHome();
+
+//                             if (versionCode === 10000 || versionCode >= 20000) {
+//                                 console.log("[viewHome] Hiding version notice");
+//                                 $("#versionnotice").hide();
+//                             }
+//                         } else {
+//                             getNextSection(sectionIndex + 1);
+//                         }
+//                     }
+//                 }
+
+//                 getNextSection(0);
+//             }
+//         } else {
+//             console.log("[viewHome] Home window already populated. Just updating...");
+//             updateHome();
+//         }
+//     } catch (error) {
+//         console.error('[viewHome] Error getting app info:', error);
+//     }
+
+//     console.log("[viewHome] End");
+// }
+
 
 
 export async function viewHome() {
     console.log("[viewHome] Start");
     shared.currentRunningApp = 'home';
-   
 
-    // if (deviceInfo == null) {
-    //     console.log("[viewHome] deviceInfo is null. Checking device registration...");
-    //     checkDeviceRegistration();
-    // }
+   
+    if (deviceInfo == null) {
+        if (networkOffline === false) {
+            console.log("[viewHome] deviceInfo is null. Checking device registration...");
+            checkDeviceRegistration();
+        }
+    }
+
+    console.log("[viewHome] Checking app version!");
 
     try {
-        var commonCMS = shared.cmsJSON.cmsJSONdata.common;
-        var homeScreenSource = shared.cmsJSON.cmsJSONdata.homeScreen;
-
-        
+       
         const appInfo = await App.getInfo();
+
         console.log("[viewHome] App Info:", appInfo);
 
-        $('#appVersion').html(appInfo.version);
+        const versionName = appInfo.version || "0.0.0";
 
-        if ($("#homeWindow").is(':empty')) {
-            console.log("[viewHome] Home window is empty. Proceeding to populate content...");
-            let prodHtml = "";
-            
+        // Show version text same as Cordova
+        $('#appVersion').html(versionName);
 
-            const versionParts = appInfo.version.split('.');
-            const majorVersion = parseInt(versionParts[0]) || 0;
-            const minorVersion = parseInt(versionParts[1]) || 0;
-            const patchVersion = parseInt(versionParts[2]) || 0;
-            const versionCode = majorVersion * 10000 + minorVersion * 100 + patchVersion;
+        // Convert version name (e.g., "1.2.3") → version code (Cordova gives integer)
+        const versionParts = versionName.split(".");
+        const major = parseInt(versionParts[0]) || 0;
+        const minor = parseInt(versionParts[1]) || 0;
+        const patch = parseInt(versionParts[2]) || 0;
 
-            console.log("[viewHome] Parsed versionCode:", versionCode);
+        const versionCode = (major * 10000) + (minor * 100) + patch;
 
-            if (commonCMS.mainBodyHtml.length && versionCode < 20000 && versionCode !== 10000) {
-                console.log("[viewHome] Using mainBodyHtml from CMS");
-                prodHtml = commonCMS.mainBodyHtml;
-                $("#homeWindow").html(prodHtml);
-                displaySection("homeSection", "block", true, true);
-            } else {
-                console.log("[viewHome] Generating home screen dynamically");
-                // const homeScreenSource = shared.cmsJSON.cmsJSONdata.homeScreen;
+        console.log("[viewHome] Computed versionCode:", versionCode);
+        generateHomeScreen(versionCode);
 
-                if (homeScreenSource.assistPresent === true) {
-                    console.log("[viewHome] Assist present. Adding assist div");
-                    prodHtml += "<div id='assist'></div>";
+    } catch (error) {
+        console.error("[viewHome] Failed to get version code:", error);
+
+        generateHomeScreen(0);
+    }
+
+    console.log("[viewHome] End");
+}
+
+export function generateHomeScreen(version) {
+    const commonCMS = shared.cmsJSON.cmsJSONdata.common;
+    const homeScreenSource = shared.cmsJSON.cmsJSONdata.homeScreen;
+
+    if ($("#homeWindow").is(':empty')) {
+        console.log("[generateHomeScreen] Building home… version:", version);
+
+        let prodHtml = "";
+        let sectionList = "";
+
+        // version != 0, != 10000, < 10100
+        if (
+            commonCMS.mainBodyHtml.length &&
+            version &&
+            version != 0 &&
+            version != 10000 &&
+            version < 10100
+        ) {
+            console.log("[generateHomeScreen] Using mainBodyHtml from CMS");
+            prodHtml = commonCMS.mainBodyHtml;
+            $("#homeWindow").html(prodHtml);
+            displaySection("homeSection", "block", true, true);
+            return;
+        }
+
+        console.log("[generateHomeScreen] Generating dynamic home screen...");
+
+        if (homeScreenSource.assistPresent === true) {
+            prodHtml += "<div id='assist'></div>";
+        }
+
+        function getNextSection(sectionIndex) {
+            let section = homeScreenSource.sectionList[sectionIndex];
+
+            // NEW DESIGN — has sectionStyle
+            if (section.sectionStyle && section.sectionStyle.length) {
+                prodHtml += `<div id="homeSection${sectionIndex}" style="${section.sectionStyle}">`;
+
+                if (section.content.length && section.content.startsWith("<")) {
+                    prodHtml += section.content;
                 }
+            } else {
+                // OLD DESIGN — content style only
+                if (section.content.length && section.content.startsWith("<")) {
+                    prodHtml += `<div style="${section.content}">`;
+                }
+            }
 
-                function getNextSection(sectionIndex) {
-                    const section = homeScreenSource.sectionList[sectionIndex];
-                    console.log(`[viewHome] Processing section ${sectionIndex}`, section);
+            // MENU LIST
+            if (section.menuList && section.menuList.length) {
+                function getNextMenu(menuIndex) {
+                    const menu = section.menuList[menuIndex];
 
-                    if (section.sectionStyle?.length) {
-                        prodHtml += `<div id="homeSection${sectionIndex}" style="${section.sectionStyle}">`;
-                        if (section.content?.startsWith('<')) {
-                            prodHtml += section.content;
-                        }
-                    } else if (section.content?.length) {
-                        if (section.content.startsWith('<')) {
-                            prodHtml += `<div style="${section.content}">`;
-                        }
-                    }
+                    prodHtml += getMenuBar(menu, "homeHome");
 
-                    if (Array.isArray(section.menuList) && section.menuList.length) {
-                        function getNextMenu(menuIndex) {
-                            const menu = section.menuList[menuIndex];
-                            console.log(`[viewHome] Processing menu ${menuIndex}`, menu);
-
-                            prodHtml += getMenuBar(menu, "homeHome");
-
-                            if (menuIndex === section.menuList.length - 1) {
-                                if (Array.isArray(section.overlayList)) {
-                                    section.overlayList.forEach((overlay, i) => {
-                                        console.log(`[viewHome] Adding overlay ${i}`, overlay);
-                                        prodHtml += overlay.htmlContent;
-                                    });
-                                }
-
-                                prodHtml += '</div>';
-
-                                if (sectionIndex === homeScreenSource.sectionList.length - 1) {
-                                    console.log("[viewHome] All sections processed. Injecting HTML...");
-                                    $("#homeWindow").html(prodHtml);
-                                    updateHome();
-
-                                    if (versionCode === 10000 || versionCode >= 20000) {
-                                        console.log("[viewHome] Hiding version notice");
-                                        $("#versionnotice").hide();
-                                    }
-                                } else {
-                                    getNextSection(sectionIndex + 1);
-                                }
-                            } else {
-                                getNextMenu(menuIndex + 1);
-                            }
-                        }
-
-                        getNextMenu(0);
-                    } else {
-                        if (Array.isArray(section.overlayList)) {
-                            section.overlayList.forEach((overlay, i) => {
-                                console.log(`[viewHome] Adding overlay ${i}`, overlay);
+                    if (menuIndex === section.menuList.length - 1) {
+                        // Add overlay list
+                        if (section.overlayList?.length) {
+                            section.overlayList.forEach(overlay => {
                                 prodHtml += overlay.htmlContent;
                             });
                         }
 
-                        prodHtml += '</div>';
+                        prodHtml += "</div>";
 
                         if (sectionIndex === homeScreenSource.sectionList.length - 1) {
-                            console.log("[viewHome] All sections processed. Injecting HTML...");
                             $("#homeWindow").html(prodHtml);
                             updateHome();
 
-                            if (versionCode === 10000 || versionCode >= 20000) {
-                                console.log("[viewHome] Hiding version notice");
+                            if (version == 10000 || version >= 10100) {
                                 $("#versionnotice").hide();
                             }
                         } else {
                             getNextSection(sectionIndex + 1);
                         }
+                    } else {
+                        getNextMenu(menuIndex + 1);
                     }
                 }
 
-                getNextSection(0);
-            }
-        } else {
-            console.log("[viewHome] Home window already populated. Just updating...");
-            updateHome();
-        }
-    } catch (error) {
-        console.error('[viewHome] Error getting app info:', error);
-    }
+                getNextMenu(0);
 
-    console.log("[viewHome] End");
+            } else {
+                // NO MENU LIST
+                if (section.overlayList?.length) {
+                    section.overlayList.forEach(overlay => {
+                        prodHtml += overlay.htmlContent;
+                    });
+                }
+
+                prodHtml += "</div>";
+
+                if (sectionIndex === homeScreenSource.sectionList.length - 1) {
+                    $("#homeWindow").html(prodHtml);
+                    updateHome();
+
+                    if (version == 10000 || version >= 10100) {
+                        $("#versionnotice").hide();
+                    }
+                } else {
+                    getNextSection(sectionIndex + 1);
+                }
+            }
+        }
+
+        getNextSection(0);
+
+    } else {
+        console.log("[generateHomeScreen] Home already present → update only");
+        updateHome();
+    }
 }
+
+
 
 export function getMenuBar(menuSource, activeWindow) {
     var htmlData = '<div class="menu ' + menuSource.menuClass + '">';
@@ -266,7 +430,7 @@ function updateHome() {
 
     displaySection("homeSection", "block", true, true);
     // commented as not yet implemented
-    // configureCustomBackButton();
+    configureCustomBackButton();
 }
 
 export function  updateHomeButtonAcccess() {
@@ -669,5 +833,16 @@ export function clearFavouriteBtns() {
 
 
 window.viewHome = viewHome;
+window.generateHomeScreen = generateHomeScreen;
+window.getMenuBar = getMenuBar;
+window.getButtons = getButtons;
+window.updateHomeButtonAcccess = updateHomeButtonAcccess;
+window.getFavoriteBtns = getFavoriteBtns;
+window.getNewToken = getNewToken;
+window.moveBtnToSection = moveBtnToSection;
+window.attachLongclickToMenuButtons = attachLongclickToMenuButtons;
+window.updateHome = updateHome;
+window.handleMenuLongClick = handleMenuLongClick;
+window.clearFavouriteBtns = clearFavouriteBtns;
 window.closeConfirmDialogBox = closeConfirmDialogBox;
 

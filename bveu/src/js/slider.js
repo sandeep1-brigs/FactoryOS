@@ -27,7 +27,7 @@ let timerSpeedVal = [];
 var delayTimer = null;
 var maxHei = []
 
-async function initSlider(sectionIndex, delay, vertical) {
+export async function initSlider(sectionIndex, delay, vertical) {
 	
 	timerSpeedVal[sectionIndex] = delay*1000;
 	

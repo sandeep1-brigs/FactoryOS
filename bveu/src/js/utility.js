@@ -24,6 +24,9 @@ import { backErtHandle } from "./ert.js";
 import { backSolutionsHandle } from "./solutions.js";
 import { closeUserNotifications } from "./notification.js";
 import { getNewToken , moveBtnToSection , closeConfirmDialogBox} from "./settings.js";
+import { backHelpHandle } from "./help.js";
+import { backKmkioskHandle } from "./kmkiosk.js";
+import { backPipemarkHandle } from "./pipemarking.js";
 
 
 var IDLE_TIMEOUT = shared.systemConfiguration.systemInfo.appIdleTime; //seconds
@@ -132,7 +135,7 @@ export function backBtnHandle() {
     } else if(shared.currentRunningApp == 'ert') {
         backErtHandle();
     } else if(shared.currentRunningApp == 'pipeMark') {
-        backPipemarkHandle();
+         backPipemarkHandle();
     } else if(shared.currentRunningApp == 'solutions') {
         backSolutionsHandle();
     } else  if(shared.currentRunningApp == 'kmkiosk') {
@@ -190,7 +193,7 @@ export function constructUrl(urlStr, val) {
     return urlStr.replace(/<[^>]+>/, val);
 }
 
-function configureCustomBackButton() {
+export function configureCustomBackButton() {
     document.addEventListener('backbutton', backBtnHandle);
 }
 
@@ -246,7 +249,7 @@ export function removeBtnFromFavourite(btnId) {
         .catch(err => console.warn("Request aborted due to missing requestOptions.", err));
 }
 
-function checkDeviceRegistration() {
+export function checkDeviceRegistration() {
     const data = { deviceSerial: shared.deviceSerialNumber };
 
     buildRequestOptions(constructUrl("/api/getregistration"), "GET", data)
@@ -1717,7 +1720,18 @@ window.toggleNavMenu = toggleNavMenu;
 window.closeNavMenu = closeNavMenu;
 window.viewDeviceInfo = viewDeviceInfo;
 window.closeDeviceInfo = closeDeviceInfo;
+window.viewDashboard = viewDashboard;
+window.viewBveu = viewBveu;
+window.closeUnderContruction = closeUnderContruction;
 window.backBtnHandle = backBtnHandle;
+window.doSettingChange = doSettingChange;
+window.handleMenuLongClick = handleMenuLongClick;
+window.exitToErt = exitToErt;
+window.closeNeedAssistance = closeNeedAssistance;
+window.viewNeedAssistance = viewNeedAssistance;
+window.mediaError = mediaError;
+window.showMessage = showMessage;
+window.handleDialogCallback = handleDialogCallback
 window.observeResize = observeResize;
 window.closeLoadingSpinner = closeLoadingSpinner;
 window.closeUploadingSpinner = closeUploadingSpinner;
@@ -1730,7 +1744,10 @@ window.exitFullScreen = exitFullScreen;
 window.initAppRuntimeMonitor = initAppRuntimeMonitor;
 window.openDataLogArea = openDataLogArea;
 window.closeDataLogArea = closeDataLogArea;
-
-
+window.customSerialize = customSerialize;
+window.convertToReadableDate = convertToReadableDate;
+window.remove_non_ascii = remove_non_ascii;
+window.callTimerEvent = callTimerEvent;
+window.updateAppRuntime = updateAppRuntime;
 
 

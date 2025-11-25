@@ -7,6 +7,7 @@ import { Network } from '@capacitor/network';
 import { App } from '@capacitor/app';
 import $ from 'jquery';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import QRCode from "qrcodejs2-fix";
 
 
 import { shared, appUrl, s3PrivateUrl, s3PublicUrl} from "./globals.js";
@@ -3446,6 +3447,1662 @@ async function deleteLocalFile(fileName) {
         console.error(`❌ Failed to delete file: ${fileName}`, error);
     }
 }
+/*******************************************************************************
+ * Displays a printable kiosk token for the current user with selected information
+ * and a QR code.
+ *
+ * @function generateKioskToken
+ *
+ * @description
+ * Constructs and displays a token including:
+ * - User category, name, company, phone, email, address, and visit details
+ * - User image (if enabled)
+ * - A QR code representing minified user and course data
+ * - A "Print" button for printing the token
+ * Fields displayed are controlled via print options from kmkioskConfiguration
+ * or default settings. Layout is centered and formatted for kiosk display.
+ *******************************************************************************/
+/*******************************************************************************
+ * Generates a printable kiosk token with user info and QR code.
+ *
+ * @function generateKioskToken
+ *******************************************************************************/
+function generateKioskToken() {
+    generateToken(currentUserDetail, currentCourseDetail.course.courseName);
+}
+function generateKioskTokenWithCourseName(courseName) {
+    generateToken(currentUserDetail, courseName);
+}
+
+async function generateToken(userDetail, courseName) {
+
+    $("#loadingSpinner").show();
+
+    const defaultPrintOptions = {
+        userCategory: true,
+        image: true,
+        name: true,
+        company: true,
+        email: false,
+        phone: true,
+        address: false,
+        city: false,
+        state: false,
+        country: false,
+        zipcode: false,
+        visiteename: true,
+        visiteedepartment: true,
+        bloodgroup: true,
+        startdate: true,
+        enddate: true
+    };
+
+    shared.currentState = "viewPrintToken";
+
+    // ISO → readable date
+    function formatReadableDate(isoString) {
+        if (!isoString) return "";
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return isoString;
+        return d.toLocaleString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true
+        });
+    }
+
+    // ------------------------------------------------------------
+    // Build HTML layout
+    // ------------------------------------------------------------
+    const printOptions =
+        kmkioskConfiguration?.config?.printOptions || defaultPrintOptions;
+
+    let htmlContent = `
+    <div class="lightBkClass" id="kmkioskTokenViewArea"
+         style="display:flex; justify-content:center; overflow:auto;">
+        <div id="kmkioskTokenDisplayArea"
+             style="width:400px; background:#fff; margin:10px; padding:10px 10px 20px 10px; line-height:1.5;">
+            <div id="kmkioskTokenViewBox">
+    `;
+
+    if (printOptions.userCategory) {
+        let title = userDetail.kmregusercategory?.toUpperCase() || "";
+        htmlContent += `
+            <div id="tokenTitle"
+                 style="font-size:2.5em; text-align:center; width:100%;">
+                 <strong>${title}</strong>
+            </div>`;
+    }
+
+    htmlContent += `
+        <div style="display:flex; flex-direction:column; align-items:center;">
+    `;
+
+    // 🖼 Image
+    if (printOptions.image && userDetail.kmreguserImage) {
+        htmlContent += `
+            <div style="width:100%; text-align:center; margin-bottom:15px;">
+                <img id="kmkioskUserImage"
+                     alt="User Image"
+                     style="width:100%; max-width:400px; object-fit:cover; border:2px solid #ccc;">
+            </div>`;
+    }
+
+    // Text fields
+    htmlContent += `<div style="width:100%; text-align:left;">`;
+
+    if (printOptions.name && userDetail.kmregusername)
+        htmlContent += `<div class="infoRow"><strong>Name:</strong> ${userDetail.kmregusername}</div>`;
+
+    if (printOptions.company && userDetail.kmregusercompany)
+        htmlContent += `<div class="infoRow"><strong>Company:</strong> ${userDetail.kmregusercompany}</div>`;
+
+    if (printOptions.phone && userDetail.kmreguserphone)
+        htmlContent += `<div class="infoRow"><strong>Phone:</strong> ${userDetail.kmreguserphone}</div>`;
+
+    if (printOptions.bloodgroup && userDetail.kmreguserbloodgroup)
+        htmlContent += `<div class="infoRow"><strong>Blood Group:</strong> ${userDetail.kmreguserbloodgroup}</div>`;
+
+    // close text area + main column
+    htmlContent += `</div></div>`;
+
+    // More optional fields
+    if (printOptions.address && userDetail.kmregaddress1)
+        htmlContent += `<div class="infoRow"><strong>Address:</strong> ${userDetail.kmregaddress1}</div>`;
+
+    if (printOptions.visiteename && userDetail.kmregvisiteename)
+        htmlContent += `<div class="infoRow"><strong>Visitee:</strong> ${userDetail.kmregvisiteename}</div>`;
+
+    if (printOptions.startdate && userDetail.kmregstartdate)
+        htmlContent += `<div class="infoRow"><strong>Start:</strong> ${formatReadableDate(userDetail.kmregstartdate)}</div>`;
+
+    if (printOptions.enddate && userDetail.kmregenddate)
+        htmlContent += `<div class="infoRow"><strong>End:</strong> ${formatReadableDate(userDetail.kmregenddate)}</div>`;
+
+    // ⭐ QR Code container
+    htmlContent += `
+        <div id="qrCodeArea" style="text-align:center; margin-top:10px;">
+            <div id="tokenQRCode"></div>
+        </div>
+    `;
+
+    // Close container
+    htmlContent += `
+            </div>
+        </div>
+    </div>
+
+    <div class="qpaperfooter" style="position:absolute; bottom:40px;">
+        <div></div>
+        <div id="printBtn" class="kmkioskBtnStyle"
+             onclick="printTokenSmart('kmkioskTokenDisplayArea')">Print</div>
+    </div>
+    `;
+
+    // Inject into DOM
+    $("#modulesDisplayArea").html(htmlContent);
+
+    // ------------------------------------------------------------
+    // Load image (Capacitor filesystem-safe)
+    // ------------------------------------------------------------
+    if (printOptions.image && userDetail.kmreguserImage) {
+        displayLocalUserImage(userDetail.kmreguserImage, "kmkioskUserImage");
+    }
+
+    // ------------------------------------------------------------
+    // Generate QR Data
+    // ------------------------------------------------------------
+    const userData = Object.entries(userDetail).reduce((acc, [key, value]) => {
+        const shortKey = keyMap[key] || key;
+        acc[shortKey] = value;
+        return acc;
+    }, {});
+
+    const qrPayload = {
+        app: "kiosk",
+        code: {
+            cat: userDetail.kmregusercategory,
+            tr: courseName,
+            u: userData
+        }
+    };
+
+    const qrJSONString = JSON.stringify(qrPayload);
+
+    // ------------------------------------------------------------
+    // Generate QR Code
+    // ------------------------------------------------------------
+    const qrElement = document.getElementById("tokenQRCode");
+    if (qrElement) {
+        qrElement.innerHTML = "";
+        new QRCode(qrElement, {
+            text: qrJSONString,
+            width: 380,
+            height: 380,
+            colorDark: "#000",
+            colorLight: "#fff",
+            correctLevel: QRCode.CorrectLevel.L
+        });
+        qrElement.dataset.text = qrJSONString;
+    }
+
+    // ------------------------------------------------------------
+    // UI Controls
+    // ------------------------------------------------------------
+    $("#modulesMenuArea").hide();
+    $("#modulesListArea").hide();
+    $("#modulesDisplayArea").show();
+
+    fixModuleHeight("modulesModuleHeader, footerSection", 20, "kmkioskTokenViewArea");
+
+    $("#loadingSpinner").hide();
+}
+
+let printerConfig = {
+    "portType": "COM",       // COM/Serial only
+    "portName": "/dev/ttyAS7",
+    "portSetting": "9600,n,8,1"
+};
+
+/*******************************************************************************
+ * printTokenSmart(tokenContainerId)
+ * ---------------------------------
+ * Prints kiosk token dynamically with:
+ *  - Dynamic category title (e.g., VISITOR, STAFF, etc.)
+ *  - User photo as raster (native streaming)
+ *  - User info as text
+ *  - QR code (native or raster fallback)
+ *  - Clean feed and cut
+ *  - Flow control aware
+ *******************************************************************************/
+async function printTokenSmart(tokenContainerId) {
+    console.log("🧠 printTokenSmart() invoked");
+
+    const container = typeof tokenContainerId === "string"
+        ? document.getElementById(tokenContainerId)
+        : tokenContainerId;
+
+    if (!container) {
+        console.error("❌ [printTokenSmart] Container not found.");
+        return;
+    }
+
+    /***********************************
+     * 1️⃣ Load and prepare printer config
+     ***********************************/
+    const saved = JSON.parse(localStorage.getItem("printerConfig") || "null");
+    if (!saved) {
+        alert("⚠️ Please configure a printer first.");
+        return;
+    }
+
+    const [baudStr, parityStr, dataBitsStr, stopBitsStr] =
+        (saved.portSetting || "9600,n,8,1").split(",");
+
+    const serialOpts = {
+        path: saved.portName.startsWith("/dev/") ? saved.portName : `/dev/${saved.portName}`,
+        baudRate: parseInt(baudStr, 10) || 9600,
+        parity: (parityStr || "n").toLowerCase(),
+        dataBits: parseInt(dataBitsStr, 10) || 8,
+        stopBits: parseInt(stopBitsStr, 10) || 1,
+        flowControl: saved.flowControl || "none" // ✅ NEW
+    };
+
+    console.log("🔧 Serial options:", serialOpts);
+
+    /***********************************
+     * 2️⃣ Extract page elements
+     ***********************************/
+    const imgEl = container.querySelector("#kmkioskUserImage");
+    const textEls = Array.from(container.querySelectorAll(".infoRow"));
+    const qrCanvas = container.querySelector("#tokenQRCode canvas");
+    const qrImg = container.querySelector("#tokenQRCode img");
+
+    // Extract dynamic title
+    const titleEl = container.querySelector("#tokenTitle");
+    const dynamicTitle = (titleEl?.innerText || "").trim().toUpperCase() || "TOKEN";
+    console.log("🏷️ Token title:", dynamicTitle);
+
+    // QR Data
+    let qrDataRaw =
+        container.querySelector("#tokenQRCode")?.dataset?.text ||
+        (typeof finalQRObject !== "undefined" ? JSON.stringify(finalQRObject) : null);
+    qrDataRaw = qrDataRaw?.replace(/\s+/g, "");
+    console.log("🔳 QR data length:", qrDataRaw?.length || 0);
+
+    if (!window.SerialPort) {
+        alert("❌ SerialPort plugin not found!");
+        return;
+    }
+
+    /***********************************
+     * 3️⃣ Open Serial Port
+     ***********************************/
+    console.log("📡 Opening serial port...");
+    window.SerialPort.open(serialOpts, () => {
+        console.log("✅ Serial port opened successfully.");
+
+        // Initialize printer
+        window.SerialPort.writeText("\x1B\x40", async () => {
+            console.log("🧾 Printer initialized (ESC @)");
+
+            /*************************
+             * 0️⃣ Print Title
+             *************************/
+            const titleCmd =
+                "\x1B\x61\x01" +   // Center align
+                "\x1B\x21\x30" +   // Double width + height
+                dynamicTitle + "\n" +
+                "\x1B\x21\x00" +   // Reset
+                "\x1B\x61\x00";    // Left align
+
+            window.SerialPort.writeText(titleCmd, async () => {
+                console.log("✅ Title printed:", dynamicTitle);
+                await printPhotoSection();
+            });
+
+            /*************************
+             * 1️⃣ User Photo Section (Raster)
+             *************************/
+            async function printPhotoSection() {
+                if (!imgEl || !imgEl.src) {
+                    console.log("⚠️ No photo found, skipping image print.");
+                    return printTextSection();
+                }
+
+                console.log("🖼 Printing user photo...");
+                try {
+                    const imgBytes = await imageToEscPos(imgEl);
+                    console.log(`📦 [UserPhoto] Bytes=${imgBytes.length}`);
+
+                    // ✅ Use writeStream if available (smooth, native streaming)
+                    const writeFn = window.SerialPort.writeStream || window.SerialPort.writeBytes;
+                    writeFn(imgBytes, () => {
+                        console.log("✅ Photo printed. Feeding...");
+                        const feed = new Uint8Array([0x0A]);
+                        window.SerialPort.writeBytes(feed, printTextSection);
+                    }, err => {
+                        console.error("💥 Photo stream failed:", err);
+                        printTextSection();
+                    });
+                } catch (err) {
+                    console.error("💥 Image conversion failed:", err);
+                    printTextSection();
+                }
+            }
+
+            /*************************
+             * 2️⃣ Text Section
+             *************************/
+            function printTextSection() {
+                console.log("📝 Printing text section...");
+                if (!textEls.length) return printQRCodeSection();
+
+                let i = 0;
+                const next = () => {
+                    if (i >= textEls.length) {
+                        console.log("✅ Text done. Feeding...");
+                        return window.SerialPort.writeBytes(new Uint8Array([0x0A]), printQRCodeSection);
+                    }
+
+                    const line = (textEls[i++].innerText || "").trim();
+                    if (!line) return next();
+                    window.SerialPort.writeText(line + "\n", () => setTimeout(next, 25));
+                };
+                next();
+            }
+
+            /*************************
+             * 3️⃣ QR Section (Native or Raster)
+             *************************/
+            async function printQRCodeSection() {
+                console.log("🔳 Printing QR...");
+                if (!qrDataRaw) return finalizePrint();
+
+                try {
+                    if (qrDataRaw.length > 400) {
+                        console.warn("⚠️ Large QR → using raster fallback.");
+
+                        const qrElement = qrCanvas || qrImg;
+                        if (!qrElement) {
+                            console.error("❌ No QR image found for fallback.");
+                            return finalizePrint();
+                        }
+
+                        const qrBytes = await imageToEscPos(qrElement);
+                        console.log("📦 [QR Raster] Bytes:", qrBytes.length);
+
+                        const writeFn = window.SerialPort.writeStream || window.SerialPort.writeBytes;
+                        writeFn(qrBytes, () => {
+                            console.log("✅ QR raster printed. Feeding...");
+                            window.SerialPort.writeBytes(new Uint8Array([0x0A, 0x0A]), finalizePrint);
+                        }, err => {
+                            console.error("💥 QR stream failed:", err);
+                            finalizePrint();
+                        });
+                        return;
+                    }
+
+                    // Native QR print
+                    const qrBytes = buildEscPosQRCodeBytes(qrDataRaw);
+                    console.log("🔳 [QR Native] Bytes:", qrBytes.length);
+                    window.SerialPort.writeBytes(new Uint8Array([0x1B, 0x61, 0x01]), () => {
+                        window.SerialPort.writeBytes(qrBytes, () => {
+                            console.log("✅ QR printed. Feeding...");
+                            window.SerialPort.writeBytes(new Uint8Array([0x0A, 0x0A]), finalizePrint);
+                        });
+                    });
+                } catch (err) {
+                    console.error("💥 QR print failed:", err);
+                    finalizePrint();
+                }
+            }
+
+            /*************************
+             * 4️⃣ Finalize Print
+             *************************/
+            function finalizePrint() {
+                console.log("🔚 Finalizing print...");
+                const cut = new Uint8Array([0x1D, 0x56, 0x00]);
+                window.SerialPort.writeBytes(cut, () => {
+                    console.log("✅ Cut sent. Closing port...");
+                    window.SerialPort.close?.(() => console.log("🔒 Port closed."));
+                });
+            }
+        });
+    }, err => {
+        console.error("💥 Failed to open serial port:", err);
+        alert("❌ Failed to open serial port: " + err);
+    });
+}
+
+
+/*******************************************************************************
+ * imageToEscPos(element, ditherMode)
+ * Converts <img> or <canvas> into ESC/POS raster data.
+ * - Scales to 384 px width
+ * - Supports multiple dithering modes:
+ *   none | bayer2x2 | bayer4x4 | floydsteinberg
+ *******************************************************************************/
+function imageToEscPos(element, ditherMode = "none") {
+    return new Promise((resolve, reject) => {
+        try {
+            const MAX_WIDTH = 384;
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+
+            function applyDithering(ctx, w, h) {
+                const imgData = ctx.getImageData(0, 0, w, h);
+                const processed = applyDitheringMode(imgData, w, h, ditherMode);
+                ctx.putImageData(processed, 0, 0);
+            }
+
+            if (element.tagName === "CANVAS") {
+                const scale = Math.min(1, MAX_WIDTH / element.width);
+                const w = Math.floor(element.width * scale);
+                const h = Math.floor(element.height * scale);
+                canvas.width = w;
+                canvas.height = h;
+                ctx.drawImage(element, 0, 0, w, h);
+                applyDithering(ctx, w, h);
+                return convertCanvasToEscPos(canvas, bytes => resolve(bytes));
+            }
+
+            if (element.tagName === "IMG") {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = function () {
+                    const scale = Math.min(1, MAX_WIDTH / img.width);
+                    const w = Math.floor(img.width * scale);
+                    const h = Math.floor(img.height * scale);
+                    canvas.width = w;
+                    canvas.height = h;
+                    ctx.drawImage(img, 0, 0, w, h);
+                    applyDithering(ctx, w, h);
+                    convertCanvasToEscPos(canvas, bytes => resolve(bytes));
+                };
+                img.onerror = reject;
+                img.src = element.src;
+                return;
+            }
+
+            reject(new Error("Unsupported element type for imageToEscPos()"));
+        } catch (err) {
+            reject(err);
+        }
+    });
+}
+
+/*******************************************************************************
+ * applyDitheringMode(imageData, width, height, mode)
+ *******************************************************************************/
+function applyDitheringMode(imageData, width, height, mode) {
+    switch (mode) {
+        case "bayer2x2": return bayerDither(imageData, width, height, 2);
+        case "bayer4x4": return bayerDither(imageData, width, height, 4);
+        case "floydsteinberg": return floydSteinbergDither(imageData, width, height);
+        case "none":
+        default: return thresholdDither(imageData, width, height);
+    }
+}
+
+/*******************************************************************************
+ * Threshold Dither (no pattern)
+ *******************************************************************************/
+function thresholdDither(imageData, width, height) {
+    const d = imageData.data;
+    for (let i = 0; i < d.length; i += 4) {
+        const gray = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+        const v = gray < 128 ? 0 : 255;
+        d[i] = d[i + 1] = d[i + 2] = v;
+    }
+    return imageData;
+}
+
+/*******************************************************************************
+ * Bayer Ordered Dithering (2×2 or 4×4)
+ *******************************************************************************/
+function bayerDither(imageData, width, height, size = 2) {
+    const d = imageData.data;
+    const bayer2 = [
+        [0, 2],
+        [3, 1]
+    ];
+    const bayer4 = [
+        [0, 8, 2, 10],
+        [12, 4, 14, 6],
+        [3, 11, 1, 9],
+        [15, 7, 13, 5]
+    ];
+    const matrix = size === 4 ? bayer4 : bayer2;
+    const div = size * size;
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+            const gray = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+            const threshold = (matrix[y % size][x % size] / div) * 255;
+            const v = gray < threshold ? 0 : 255;
+            d[i] = d[i + 1] = d[i + 2] = v;
+        }
+    }
+    return imageData;
+}
+
+/*******************************************************************************
+ * Floyd–Steinberg Dithering (error diffusion)
+ *******************************************************************************/
+function floydSteinbergDither(imageData, width, height) {
+    const d = imageData.data;
+    const lum = new Float32Array(width * height);
+    for (let i = 0; i < width * height; i++) {
+        const j = i * 4;
+        lum[i] = 0.3 * d[j] + 0.59 * d[j + 1] + 0.11 * d[j + 2];
+    }
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const i = y * width + x;
+            const oldPixel = lum[i];
+            const newPixel = oldPixel < 128 ? 0 : 255;
+            const err = oldPixel - newPixel;
+            lum[i] = newPixel;
+
+            if (x + 1 < width) lum[i + 1] += err * 7 / 16;
+            if (x - 1 >= 0 && y + 1 < height) lum[i + width - 1] += err * 3 / 16;
+            if (y + 1 < height) lum[i + width] += err * 5 / 16;
+            if (x + 1 < width && y + 1 < height) lum[i + width + 1] += err * 1 / 16;
+        }
+    }
+
+    for (let i = 0; i < width * height; i++) {
+        const v = lum[i] < 128 ? 0 : 255;
+        const j = i * 4;
+        d[j] = d[j + 1] = d[j + 2] = v;
+    }
+    return imageData;
+}
+
+/***************************************************************************
+ * Helper: Convert Canvas → ESC/POS Raster Bytes (block-safe & fast)
+ * - Groups 8 lines per block (≈8× faster than line-by-line)
+ * - Prevents chunk-split distortion
+ ***************************************************************************/
+function convertCanvasToEscPos(canvas, callback) {
+    const ctx = canvas.getContext("2d");
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    const alignedWidth = Math.ceil(canvas.width / 8) * 8;
+    const height = canvas.height;
+    const lineBytes = alignedWidth / 8;
+    const blockHeight = 8; // ✅ 8 lines per block (tunable)
+    const bytes = [];
+
+    for (let y = 0; y < height; y += blockHeight) {
+        const blockH = Math.min(blockHeight, height - y);
+
+        // GS v 0 command header
+        bytes.push(0x1D, 0x76, 0x30, 0x00);
+        bytes.push(lineBytes & 0xFF, lineBytes >> 8, blockH & 0xFF, blockH >> 8);
+
+        // Write blockH scanlines
+        for (let yy = 0; yy < blockH; yy++) {
+            const yPos = y + yy;
+            for (let x = 0; x < alignedWidth; x += 8) {
+                let byte = 0;
+                for (let bit = 0; bit < 8; bit++) {
+                    const i = ((yPos * canvas.width) + (x + bit)) * 4;
+                    const gray = (img.data[i] + img.data[i + 1] + img.data[i + 2]) / 3;
+                    if (gray < 128) byte |= (0x80 >> bit);
+                }
+                bytes.push(byte);
+            }
+        }
+    }
+
+    console.log(`[convertCanvasToEscPos] width=${alignedWidth}, height=${height}, bytes=${bytes.length}, blockHeight=${blockHeight}`);
+    callback(new Uint8Array(bytes));
+}
+
+
+/*
+function convertCanvasToEscPos(canvas, callback) {
+    const ctx = canvas.getContext("2d");
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    const alignedWidth = Math.ceil(canvas.width / 8) * 8; // ✅ byte alignment
+    const height = canvas.height;
+    const bytes = [];
+
+    // ESC/POS raster header
+    bytes.push(0x1D, 0x76, 0x30, 0x00);
+    bytes.push((alignedWidth / 8) & 0xFF, (alignedWidth / 8) >> 8, height & 0xFF, height >> 8);
+
+    // Convert pixels to monochrome bitmap
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < alignedWidth; x += 8) {
+            let byte = 0;
+            for (let bit = 0; bit < 8; bit++) {
+                const i = ((y * canvas.width) + (x + bit)) * 4;
+                let avg = 255;
+                if (x + bit < canvas.width) {
+                    const r = imgData.data[i];
+                    const g = imgData.data[i + 1];
+                    const b = imgData.data[i + 2];
+                    avg = (r + g + b) / 3;
+                }
+                if (avg < 128) byte |= (0x80 >> bit);
+            }
+            bytes.push(byte);
+        }
+    }
+
+    // Safety: ensure byte count matches declared header
+    const expected = (alignedWidth / 8) * height;
+    const actual = bytes.length - 8; // exclude header
+    if (actual !== expected) {
+        console.warn(`⚠️ Raster length mismatch! expected=${expected}, actual=${actual}`);
+    } else {
+        console.log(`✅ Raster data validated: ${actual} bytes`);
+    }
+
+    callback(new Uint8Array(bytes));
+}*/
+
+
+/*******************************************************************************
+ * printSamplePage(config, log)
+ * Adds optional flow control handling
+ *******************************************************************************/
+function printSamplePage(config, log) {
+    const now = new Date().toLocaleString();
+    log(`🕒 [${now}] Starting test page`);
+
+    const cfg = config || printerConfig || {};
+    const [baudStr, parityStr, dataBitsStr, stopBitsStr] =
+        (cfg.portSetting || "9600,n,8,1").split(",");
+
+    const serialOpts = {
+        path: cfg.portName && cfg.portName.startsWith("/dev/")
+            ? cfg.portName
+            : `/dev/${cfg.portName || "ttyS0"}`,
+        baudRate: parseInt(baudStr, 10) || 9600,
+        parity: (parityStr || "n").toLowerCase(),
+        dataBits: parseInt(dataBitsStr, 10) || 8,
+        stopBits: parseInt(stopBitsStr, 10) || 1,
+        flowControl: cfg.flowControl || "none"  // ✅ NEW
+    };
+
+    log("🔧 Opening port with options: " + JSON.stringify(serialOpts, null, 2));
+
+    try {
+        log("📡 [STEP] Attempting to open serial port...");
+        window.SerialPort.open(serialOpts, () => {
+            log("✅ [OK] Serial port successfully opened.");
+
+            // ESC/POS constants
+            const ESC = "\x1B", GS = "\x1D", LF = "\x0A";
+
+            const qrData = "https://bveu.in/";
+            const qrBytes = buildEscPosQRCodeBytes(qrData);
+            log(`🔳 [QR DEBUG] Data=${qrData}, Bytes=${qrBytes.length}`);
+
+            const testText =
+                ESC + "@\n" +
+                "============================\n" +
+                "     🧾 TEST PRINT PAGE 🧾    \n" +
+                "============================\n" +
+                "Printer: OK\n" +
+                `Port: ${serialOpts.path}\n` +
+                `Baud: ${serialOpts.baudRate}, Parity: ${serialOpts.parity.toUpperCase()}\n` +
+                `Data Bits: ${serialOpts.dataBits}, Stop Bits: ${serialOpts.stopBits}\n` +
+                `Flow: ${serialOpts.flowControl}\n\n` +
+                "----------------------------\n" +
+                "Left aligned text\n" +
+                ESC + "a" + "\x01" + "Centered text\n" +
+                ESC + "a" + "\x02" + "Right aligned text\n" +
+                ESC + "a" + "\x00" +
+                "----------------------------\n" +
+                ESC + "E" + "\x01" + "Bold Text ON\n" + ESC + "E" + "\x00" +
+                ESC + "!" + "\x10" + "Double Height\n" + ESC + "!" + "\x00" +
+                ESC + "!" + "\x20" + "Double Width\n" + ESC + "!" + "\x00" +
+                ESC + "!" + "\x30" + "Double Height & Width\n" + ESC + "!" + "\x00" +
+                "----------------------------\n" +
+                "Sample Numbers: 1234567890\n" +
+                "Sample Letters: ABCDEFGHIJ\n" +
+                "Symbols: #@$%&*()/+-=?!\n" +
+                "----------------------------\n" +
+                "Testing QR Code...\n";
+
+            const afterQR =
+                "----------------------------\n" +
+                "Check line feeds...\n\n\n" +
+                ESC + "a" + "\x01" + "=== END OF TEST ===\n" +
+                ESC + "a" + "\x00" + LF + LF + LF +
+                GS + "V" + "\x00"; // Cut
+
+            // Print in sequence
+            window.SerialPort.writeText(testText, () => {
+                window.SerialPort.writeBytes(qrBytes, () => {
+                    window.SerialPort.writeText(afterQR, () => {
+                        log("✅ [OK] Test page printed successfully.");
+                        window.SerialPort.close?.(
+                            () => log("✅ [OK] Serial port closed."),
+                            err => log(`❌ [ERROR] Close failed: ${err}`)
+                        );
+                    });
+                });
+            });
+        }, err => log(`❌ [ERROR] Failed to open serial port: ${err}`));
+    } catch (ex) {
+        log(`💥 [EXCEPTION] printSamplePage failed: ${ex.message}`);
+    }
+
+    log("🕒 [END] Print sample request queued (async).");
+}
+
+let originalImageDataURL = null; // store clean unprocessed version
+/*******************************************************************************
+ * testSerialPrinterWithLog()
+ * Final version:
+ *  - Common title (with top margin)
+ *  - Equal height panels
+ *  - Hidden fullscreen log overlay
+ *  - “View Log” toggle button beside Save Default
+ *******************************************************************************/
+function testSerialPrinterWithLog() {
+    shared.currentState = "testPrinter";
+    $("#modulesMenuArea, #modulesListArea").hide();
+    $("#modulesDisplayArea").show().html("");
+
+    const container = document.getElementById("modulesDisplayArea");
+
+    /******************************************
+     * PAGE HEADER
+     ******************************************/
+    const header = document.createElement("h2");
+    header.textContent = "🖨 Printer Setup & Test";
+    header.style.cssText = `
+        font-size: 24px;
+        color: #004aad;
+        text-align: center;
+        margin-top: 15px;
+        margin-bottom: 15px;
+    `;
+    container.appendChild(header);
+
+    /******************************************
+     * MAIN WRAPPER – two test boxes side by side
+     ******************************************/
+    const mainWrapper = document.createElement("div");
+    mainWrapper.style.cssText = `
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        justify-content: center;
+        width: 100%;
+        gap: 20px;
+        background: #f7f7f9;
+        padding: 20px;
+        box-sizing: border-box;
+    `;
+
+    /****************************
+     * LEFT PANEL – Printer Setup
+     ****************************/
+    const setup = document.createElement("div");
+    setup.style.cssText = `
+        display:flex;flex-direction:column;align-items:center;
+        background:#f7f7f9;flex:1;max-width:600px;
+    `;
+
+    const box = document.createElement("div");
+    box.style.cssText = `
+        width:100%;height:100%;
+        background:white;padding:15px;border-radius:10px;
+        box-shadow:rgba(0,0,0,0.1) 0 2px 6px;
+        display:flex;flex-direction:column;justify-content:space-between;
+    `;
+    box.id = "printerOptionBox";
+    box.innerHTML = `
+        <div>
+            <div style="display:flex;align-items:center;margin-bottom:10px;">
+                <label style="width:100px;">Port:</label>
+                <select id="portSelect" style="flex:1; padding:5px;"></select>
+                <button id="scanPortsBtn" class="kmkioskBtnStyle" style="margin-left:10px;">🔍 Scan</button>
+            </div>
+            <div style="display:flex;align-items:center;margin-bottom:10px;">
+                <label style="width:100px;">Baud Rate:</label>
+                <select id="baudInput" style="flex:1; padding:5px;">
+                    <option value="9600">9600</option><option value="19200">19200</option>
+                    <option value="38400">38400</option><option value="57600">57600</option>
+                    <option value="115200">115200</option>
+                </select>
+            </div>
+            <div style="display:flex;align-items:center;margin-bottom:10px;">
+                <label style="width:100px;">Parity:</label>
+                <select id="paritySelect" style="flex:1; padding:5px;">
+                    <option value="n">None</option><option value="e">Even</option><option value="o">Odd</option>
+                </select>
+            </div>
+            <div style="display:flex;align-items:center;margin-bottom:10px;">
+                <label style="width:100px;">Data Bits:</label>
+                <input id="dataBitsInput" type="number" value="8" min="5" max="8" style="flex:1; padding:5px;">
+            </div>
+            <div style="display:flex;align-items:center;margin-bottom:10px;">
+                <label style="width:100px;">Stop Bits:</label>
+                <input id="stopBitsInput" type="number" value="1" min="1" max="2" style="flex:1; padding:5px;">
+            </div>
+            <div style="display:flex;align-items:center;margin-bottom:10px;">
+                <label style="width:100px;">Flow Control:</label>
+                <select id="flowSelect" style="flex:1; padding:5px;">
+                    <option value="none">None</option>
+                    <option value="xonxoff">XON/XOFF</option>
+                    <option value="rtscts">RTS/CTS</option>
+                </select>
+            </div>
+        </div>
+        <div style="text-align:center;margin-top:10px;display:flex;align-items:center;">
+            <button id="printTestPageBtn" class="kmkioskBtnStyle">🧾 Print Test Page</button>
+        </div>
+    `;
+    setup.appendChild(box);
+
+    /****************************
+     * RIGHT PANEL – Image Dithering
+     ****************************/
+    const testPanel = document.createElement("div");
+    testPanel.style.cssText = `
+        flex:1;max-width:400px;
+        background:white;border-radius:10px;
+        box-shadow:rgba(0,0,0,0.1) 0 2px 6px;
+        padding:15px;display:flex;flex-direction:column;
+        justify-content:space-between;align-items:center;
+    `;
+    testPanel.innerHTML = `
+        <div style="width:100%;">
+            <div style="text-align:center;display:flex; justify-content: center;">
+                <button id="captureImageBtn" class="kmkioskBtnStyle" style="margin-bottom:10px;">📸 Capture Image</button>
+            </div>
+            <div id="previewBox" style="width:100%;height:220px;text-align:center;margin-bottom:10px;border:1px solid #ccc;border-radius:6px;display:flex;align-items:center;justify-content:center;background:#f9f9f9;">
+                <span id="noImagePlaceholder" style="color:#888;">No image captured</span>
+                <img id="ditherPreview" src="" alt="Captured preview" style="max-width:100%;max-height:220px;border-radius:6px;display:none;">
+            </div>
+            <div style="width:100%;margin-bottom:10px;">
+                <label style="font-weight:500;">Dithering Technique:</label>
+                <select id="ditherSelect" style="width:100%; padding:5px; margin-top:5px;">
+                    <option value="none">None (Threshold)</option>
+                    <option value="bayer2x2">Bayer 2x2</option>
+                    <option value="bayer4x4">Bayer 4x4</option>
+                    <option value="floydsteinberg">Floyd–Steinberg</option>
+                </select>
+            </div>
+        </div>
+        <div style="text-align:center; display:flex; justify-content:center; gap:10px;">
+            <button id="printImageBtn" class="kmkioskBtnStyle">🧾 Print Test Image</button>
+        </div>
+    `;
+    mainWrapper.appendChild(setup);
+    mainWrapper.appendChild(testPanel);
+    container.appendChild(mainWrapper);
+
+    /****************************
+     * FOOTER – Save + View Log
+     ****************************/
+    const footer = document.createElement("div");
+    footer.style.cssText = `
+        width:100%;max-width:1200px;margin:20px auto 0;
+        display:flex;flex-direction:row;justify-content:space-between;gap:10px;
+    `;
+    footer.innerHTML = `
+        <button id="saveConfigBtn" class="kmkioskBtnStyle">💾 Save Default Configuration</button>
+        <button id="viewLogBtn" class="kmkioskBtnStyle">📜 View Log</button>
+    `;
+    container.appendChild(footer);
+
+    /****************************
+     * HIDDEN LOG OVERLAY
+     ****************************/
+    const logOverlay = document.createElement("div");
+    logOverlay.id = "logOverlay";
+    logOverlay.style.cssText = `
+        position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.85);z-index:9999;display:none;
+        flex-direction:column;justify-content:center;align-items:center;
+    `;
+    logOverlay.innerHTML = `
+        <div style="width:90%;max-width:1000px;height:80%;background:#000;border-radius:8px;overflow:auto;position:relative;">
+            <button id="closeLogBtn" style="
+                position:absolute;top:10px;right:10px;
+                background:#ff4444;color:#fff;border:none;border-radius:5px;
+                padding:5px 10px;cursor:pointer;">✖ Close</button>
+            <div id="serialLogWindow" style="
+                color:#0f0;font-family:monospace;
+                padding:10px;font-size:13px;white-space:pre-wrap;"></div>
+        </div>
+    `;
+    document.body.appendChild(logOverlay);
+
+    /****************************
+     * LOG FUNCTION
+     ****************************/
+    function log(msg) {
+        const logWin = document.getElementById("serialLogWindow");
+        const t = new Date().toLocaleTimeString();
+        const div = document.createElement("div");
+        div.textContent = `[${t}] ${msg}`;
+        logWin.appendChild(div);
+        logWin.scrollTop = logWin.scrollHeight;
+    }
+
+    /****************************
+     * CONFIG LOAD
+     ****************************/
+    let saved = JSON.parse(localStorage.getItem("printerConfig") || "null");
+    if (saved) {
+        const [b, p, d, s] = saved.portSetting.split(",");
+        $("#baudInput").val(b);
+        $("#paritySelect").val(p);
+        $("#dataBitsInput").val(d);
+        $("#stopBitsInput").val(s);
+        $("#flowSelect").val(saved.flowControl || "none");
+        $("#ditherSelect").val(saved.dithering || "none");
+    }
+
+    /****************************
+     * SCAN PORTS
+     ****************************/
+    function scanPorts() {
+        log("🔍 Scanning ports...");
+        window.SerialPort?.listPorts(
+            ports => {
+                const sel = $("#portSelect").empty();
+                if (ports?.length) ports.forEach(p => sel.append(`<option value="${p}">${p}</option>`));
+                else sel.append("<option>No ports</option>");
+                log(`✅ Found ${ports.length || 0} port(s).`);
+            },
+            err => log("❌ Scan failed: " + err)
+        );
+    }
+    scanPorts();
+    $("#scanPortsBtn").click(scanPorts);
+
+    /****************************
+     * TEST PAGE PRINT
+     ****************************/
+    $("#printTestPageBtn").click(() => {
+        const port = $("#portSelect").val();
+        if (!port) return log("⚠️ Select a port first!");
+        const cfg = {
+            portName: port.replace("/dev/", ""),
+            portSetting: `${$("#baudInput").val()},${$("#paritySelect").val()},${$("#dataBitsInput").val()},${$("#stopBitsInput").val()}`,
+            flowControl: $("#flowSelect").val(),
+            dithering: $("#ditherSelect").val()
+        };
+        log("🧾 Testing with: " + JSON.stringify(cfg));
+        printSamplePage(cfg, log);
+    });
+
+    /****************************
+     * SAVE DEFAULT
+     ****************************/
+    $("#saveConfigBtn").click(() => {
+        const port = $("#portSelect").val();
+        if (!port) return log("⚠️ Select a port first!");
+        const cfg = {
+            portType: "COM",
+            portName: port.replace("/dev/", ""),
+            portSetting: `${$("#baudInput").val()},${$("#paritySelect").val()},${$("#dataBitsInput").val()},${$("#stopBitsInput").val()}`,
+            flowControl: $("#flowSelect").val(),
+            dithering: $("#ditherSelect").val()
+        };
+        localStorage.setItem("printerConfig", JSON.stringify(cfg));
+        printerConfig = cfg;
+        log("💾 Saved printer config: " + JSON.stringify(cfg));
+        alert("✅ Default configuration saved!");
+    });
+
+    /****************************
+     * VIEW / CLOSE LOG
+     ****************************/
+    $("#viewLogBtn").click(() => {
+        $("#logOverlay").css("display", "flex");
+    });
+
+    $(document).on("click", "#closeLogBtn", () => {
+        $("#logOverlay").css("display", "none");
+    });
+
+    /****************************
+     * AUTO-UPDATE DITHER PREVIEW
+     ****************************/
+    $("#ditherSelect").on("change", () => {
+        if (!originalImageDataURL) return;
+        const ditherMode = $("#ditherSelect").val();
+        log(`🎨 Applying ${ditherMode} dithering...`);
+
+        const img = new Image();
+        img.src = originalImageDataURL;
+        img.onload = () => {
+            const MAX_WIDTH = 384;
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+
+            // Scale to printer width
+            const scale = Math.min(1, MAX_WIDTH / img.width);
+            const w = Math.floor(img.width * scale);
+            const h = Math.floor(img.height * scale);
+            canvas.width = w;
+            canvas.height = h;
+
+            // Draw base image
+            ctx.drawImage(img, 0, 0, w, h);
+
+            // Apply selected dithering (unless "none")
+            if (ditherMode !== "none") {
+                const imgData = ctx.getImageData(0, 0, w, h);
+                const processed = applyDitheringMode(imgData, w, h, ditherMode);
+                ctx.putImageData(processed, 0, 0);
+            }
+
+            // Convert to PNG preview
+            const dataUrl = canvas.toDataURL("image/png");
+            $("#ditherPreview").attr("src", dataUrl).show();
+            $("#noImagePlaceholder").hide();
+            log("✅ Dithered preview updated.");
+        };
+    });
+
+
+
+    /****************************
+     * IMAGE CAPTURE + PRINT
+     ****************************/
+    let capturedImage = null;
+
+    $("#captureImageBtn").click(async () => {
+        try {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = "image/*";
+            input.capture = "environment";
+            input.onchange = e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const url = URL.createObjectURL(file);
+                $("#ditherPreview").attr("src", url).show();
+                $("#noImagePlaceholder").hide();
+                capturedImage = file;
+                originalImageDataURL = url; // 🔸 Remember the clean version
+                log("📸 Image loaded for dithering test.");
+            };
+            input.click();
+        } catch (err) {
+            log("💥 Capture failed: " + err);
+        }
+    });
+
+
+    /****************************
+     * PRINT TEST IMAGE (FIXED)
+     ****************************/
+    $("#printImageBtn").click(async () => {
+        if (!originalImageDataURL) return log("⚠️ No image captured yet!");
+
+        const ditherMode = $("#ditherSelect").val();
+        log(`🖨 Preparing image print with ${ditherMode} dithering...`);
+
+        const img = new Image();
+        img.src = $("#ditherPreview").attr("src");
+
+        img.onload = async () => {
+            try {
+                // 🧠 Convert image to a single ESC/POS raster command
+                const bytes = await imageToEscPos(img, ditherMode);
+                log(`📦 Generated continuous raster data: ${bytes.length} bytes`);
+
+                // Load printer config
+                const saved = JSON.parse(localStorage.getItem("printerConfig") || "null");
+                const [baudStr, parityStr, dataBitsStr, stopBitsStr] =
+                    (saved.portSetting || "9600,n,8,1").split(",");
+
+                const serialOpts = {
+                    path: saved.portName.startsWith("/dev/")
+                        ? saved.portName
+                        : `/dev/${saved.portName}`,
+                    baudRate: parseInt(baudStr, 10) || 9600, // ✅ keep low
+                    parity: (parityStr || "n").toLowerCase(),
+                    dataBits: parseInt(dataBitsStr, 10) || 8,
+                    stopBits: parseInt(stopBitsStr, 10) || 1,
+                    flowControl: saved.flowControl || "none"
+                };
+
+                log(`📡 Opening printer port: ${serialOpts.path}`);
+                window.SerialPort.open(serialOpts, () => {
+                    log("✅ Printer connected. Initializing...");
+
+                    // 🧾 Initialize printer
+                    const init = new TextEncoder().encode("\x1B\x40"); // ESC @
+                    window.SerialPort.writeBytes(init, () => {
+                        log("🧾 Printer reset. Sending continuous raster data...");
+
+                        // 🚀 Send all image data in one go
+                        window.SerialPort.writeBytes(bytes, () => {
+                            log(`✅ Image bytes (${bytes.length}) sent successfully.`);
+
+                            // 🧾 Feed + Cut
+                            const feedCut = new Uint8Array([
+                                0x0A, 0x0A, 0x1D, 0x56, 0x00 // LF x2 + Cut
+                            ]);
+                            window.SerialPort.writeBytes(feedCut, () => {
+                                log("✂️ Cut command sent. Closing...");
+                                setTimeout(() => {
+                                    window.SerialPort.close(
+                                        () => log("🔒 Port closed cleanly."),
+                                        err => log(`❌ Close failed: ${err}`)
+                                    );
+                                }, 100);
+                            });
+                        }, err => log(`💥 Raster write failed: ${err}`));
+                    });
+                }, err => log(`💥 Failed to open printer port: ${err}`));
+            } catch (err) {
+                log(`💥 [ERROR] Image print failed: ${err}`);
+            }
+        };
+    });
+
+
+
+}
+
+
+/*******************************************************************************
+ * buildEscPosQRCodeBytes(data)
+ * - Returns a Uint8Array with proper ESC/POS QR code commands (binary-safe)
+ * - Supports most 58mm & 80mm printers (Epson, XPrinter, Rongta, etc.)
+ *******************************************************************************/
+function buildEscPosQRCodeBytes(data) {
+    const encoder = new TextEncoder();
+    const bytes = [];
+    const GS = 0x1D;
+    const k = 0x28;
+    const qrData = encoder.encode(data);
+
+    const model = 0x32; // Model 2
+    const errorCorrection = 0x31; // M
+    const moduleSize = 5; // 1–16
+
+    const storeLen = qrData.length + 3;
+    const pL = storeLen & 0xFF;
+    const pH = (storeLen >> 8) & 0xFF;
+
+    bytes.push(GS, k, 0x6B, 0x04, 0x00, 0x31, 0x41, model, 0x00); // Select model
+    bytes.push(GS, k, 0x6B, 0x03, 0x00, 0x31, 0x45, errorCorrection); // Error correction
+    bytes.push(GS, k, 0x6B, 0x03, 0x00, 0x31, 0x43, moduleSize); // Module size
+    bytes.push(GS, k, 0x6B, pL, pH, 0x31, 0x50, 0x30); // Store data
+    bytes.push(...qrData);
+    bytes.push(GS, k, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30); // Print QR
+    bytes.push(0x0A); // Line feed
+
+    console.log("🔳 [QR DEBUG] buildEscPosQRCodeBytes() length:", bytes.length);
+    return new Uint8Array(bytes);
+}
+
+
+/******************************************************************************************
+Name: viewKmkioskRegistrations
+Purpose: Generates paginated list of user registrations from the local memory. 
+******************************************************************************************/
+function viewKmkioskRegistrations(pageNumber = 0, pageSize = 50) {
+    shared.currentState = "viewKmkioskRegistrations";
+    shared.currentSourceState = shared.currentState;
+    $("#modulesMenuArea").hide();
+    $("#modulesListArea").show();
+    $("#modulesDisplayArea").hide();
+    fixModuleHeight("modulesModuleHeader, footerSection", 20, "modulesListArea");
+
+    let itemList = kmkioskRegistrations || [];
+    let totalItems = itemList.length;
+    let totalPages = Math.ceil(totalItems / pageSize);
+
+    // ✅ Slice the dataset based on the page number and page size
+    let startIndex = pageNumber * pageSize;
+    let endIndex = startIndex + pageSize;
+    let items = itemList.slice(startIndex, endIndex);
+
+    let htmlContent = '';
+    if (items && items.length > 0) {
+        let listItems = [];
+
+        htmlContent += '<div class="searchArea"><div class="searchBox" style="font-size: 1.3em; justify-content: center; text-align: center;">REGISTRED USERS ('+totalItems+')</div></div>';
+
+        for (let index = items.length; index > 0; index--) {
+            let item = items[index-1];
+            let states = [];
+
+            let description = `
+                <div>
+                    <a style="color: var(--secondary-cyan); font-size: 1.1em; font-weight: bold;" href="tel:${item.kmreguserphone}">
+                        ${item.kmreguserphone}
+                    </a>
+                </div>
+                <div>${item.kmreguseremail}</div>
+            `;
+            if(item.kmregusercategory == "EMPLOYEE") {
+                description += `
+                    <div>Department: ${item.kmregvisiteedepartment}</div>
+                    <div>Employee ID: ${item.kmregemployeeid}</div>
+                `;
+            } else if(item.kmregusercategory == "VISITOR" || item.kmregusercategory == "CONTRACTOR") {
+                description += `
+                    <div>Company: ${item.kmregusercompany}</div>
+                    <div>Visiting: ${item.kmregvisiteename} (${item.kmregvisiteedepartment})</div>
+                    <div>${item.kmregstartdate} to ${item.kmregenddate}</div>
+                `;
+            } else if(item.kmregusercategory == "DRIVER") {
+                description += `
+                    <div>Company: ${item.kmregusercompany}</div>
+                    <div>${item.kmregstartdate} to ${item.kmregenddate}</div>
+                `;
+            }
+                
+
+
+            let fullName = item.kmregusername;
+
+            let image = '';
+            if (item.kmreguserImage && item.kmreguserImage.length > 0) {
+                image = item.kmreguserImage;
+            } else {
+                image = `<img style="padding: 0 20%; width: 100%;" src="./img/icon_img.png" onerror="this.onerror=null;this.src='./img/noimage.jpg';" />`;
+            }
+
+            states.push({
+                "text": item.kmregusercategory || "N/A",
+                "type": "successState"
+            });
+
+            let itemJson = {
+                "id": item.kmreguserphone,
+                "image": image,
+                "title": fullName,
+                "description": description,
+                "clickAction": "getKmkioskUser('" + item.kmreguserphone + "')",
+                "states": states
+            };
+
+            listItems.push(itemJson);
+        }
+
+        // ✅ Create the list for this page
+        createList(
+            "kmkiosk",
+            htmlContent,
+            listItems,
+            { pageNumber: pageNumber, pageSize: pageSize, totalItems: totalItems },
+            totalPages,
+            "modulesListBox",
+            "getUserAtIndex",
+            "viewKmkioskRegistrations",
+            "ticketStyle"
+        );
+
+    } else {
+        htmlContent += '<div class="formlabel">No registrations found</div>';
+        $('#modulesListBox').html(htmlContent);
+    }
+}
+
+
+/******************************************************************************************
+Name: viewKmkioskLearninngs
+Purpose: Generates paginated list of user courses from the local memory. 
+******************************************************************************************/
+function viewKmkioskLearninngs(pageNumber = 0, pageSize = 50) {
+    shared.currentState = "viewKmkioskLearninngs";
+    shared.currentSourceState = shared.currentState;
+    $("#modulesMenuArea").hide();
+    $("#modulesListArea").show();
+    $("#modulesDisplayArea").hide();
+    fixModuleHeight("modulesModuleHeader, footerSection", 20, "modulesListArea");
+
+    let itemList = kmkioskUsercourses || [];
+    let totalItems = itemList.length;
+    let totalPages = Math.ceil(totalItems / pageSize);
+
+    // ✅ Slice the dataset based on the page number and page size
+    let startIndex = pageNumber * pageSize;
+    let endIndex = startIndex + pageSize;
+    let items = itemList.slice(startIndex, endIndex);
+
+    let htmlContent = '';
+    if (items && items.length > 0) {
+        let listItems = [];
+
+        htmlContent += '<div class="searchArea"><div class="searchBox" style="font-size: 1.3em; justify-content: center; text-align: center;">TRAININGS ('+totalItems+')</div></div>';
+
+        for (let index = items.length; index > 0; index--) {
+            let item = items[index-1];
+            let states = [];
+            let courseState = JSON.parse(item.courseState);
+            let completed = "Completed";
+
+            const user = kmkioskRegistrations.find(u => u.kmreguserphone === item.userId);
+            if(user) {
+                for(content of courseState.contents) {
+                    if(content.status < 0.9) {
+                        completed = "Incomplete";
+                    }
+                }
+                let description = `
+                    <div>
+                        <a style="color: var(--secondary-cyan); font-size: 1.1em; font-weight: bold;" href="tel:${user.kmreguserphone}">
+                            ${user.kmreguserphone}
+                        </a>
+                    </div>
+                `;
+                description += `
+                    <div>Course: ${item.courseName} (${completed})</div>
+                `;
+                description += `
+                    <div>Updated: ${item.modifiedOn}</div>
+                `;
+
+                let fullName = user.kmregusername;
+
+                let image = '';
+                if (user.kmreguserImage && user.kmreguserImage.length > 0) {
+                    image = user.kmreguserImage;
+                } else {
+                    image = `<img style="padding: 0 20%; width: 100%;" src="./img/icon_img.png" onerror="this.onerror=null;this.src='./img/noimage.jpg';" />`;
+                }
+
+                states.push({
+                    "text": user.kmregusercategory || "N/A",
+                    "type": "successState"
+                });
+
+                let itemJson = {
+                    "id": user.kmreguserphone,
+                    "image": image,
+                    "title": fullName,
+                    "description": description,
+                    "clickAction": "getKmkioskCourse('" + user.kmreguserphone + "', "+item.courseId+")",
+                    "states": states
+                };
+
+                listItems.push(itemJson);
+            }
+        }
+
+        // ✅ Create the list for this page
+        createList(
+            "kmkiosk",
+            htmlContent,
+            listItems,
+            { pageNumber: pageNumber, pageSize: pageSize, totalItems: totalItems },
+            totalPages,
+            "modulesListBox",
+            "getKmkioskUserCourse",
+            "viewKmkioskLearninngs",
+            "ticketStyle"
+        );
+
+    } else {
+        htmlContent += '<div class="formlabel">No registrations found</div>';
+        $('#modulesListBox').html(htmlContent);
+    }
+}
+
+function getKmkioskUser(userPhone) {
+    shared.currentState = "kmkioskUserTicketView";
+    const userData = kmkioskRegistrations.find(u => u.kmreguserphone === userPhone);
+    
+    const completedCourses = kmkioskUsercourses
+        .filter(c => c.userId === userPhone && c.courseState)
+        .filter(c => {
+            try {
+                const state = JSON.parse(c.courseState);
+                // consider completed if all contents have status >= 0.9
+                return state.contents.every(item => item.status >= 0.9);
+            } catch {
+                return false;
+            }
+        })
+        .sort((a, b) => new Date(b.modifiedOn) - new Date(a.modifiedOn));
+
+    // if none found, return empty object
+    const completedCoursesStr = completedCourses
+        .map(c => c.courseName)
+        .join(', ');
+    const lastCompletedCourseName = completedCourses.length > 0 ? completedCourses[0].courseName : '';
+    currentUserDetail = userData;
+
+    // Combine full address
+    const fullAddress = [userData.kmregaddress1, userData.kmregaddress2, userData.kmregcity, userData.kmregstate, userData.kmregcountry, userData.kmregzipcode]
+        .filter(Boolean)
+        .join(',');
+
+    let htmlContent = `
+        <div class="userCard" style="background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 20px; margin: 20px auto; max-width: 500px; font-family: 'Roboto', sans-serif;">
+            
+            <!-- User category / title -->
+            <h2 style="text-align: center; margin-bottom: 15px; color: #333;">${userData.kmregusercategory || "User"}</h2>
+            
+            <!-- Top grid: image and primary details -->
+            <div style="display: grid; grid-template-columns: 35% 65%; gap: 15px; align-items: start;">
+                ${userData.kmreguserImage ? `
+                <div style="text-align: center;">
+                    <img src="${userData.kmreguserImage}" alt="User Image" style="width:100%; object-fit:cover; border-radius: 8px; border: 2px solid #ccc;">
+                </div>` : ''}
+
+                <div>
+                    ${userData.kmregusername ? `<div style="display:flex; align-items:center; margin-bottom:5px;"><span class="material-symbols-outlined" style="margin-right:6px; color:#4caf50; font-size:24px;">person</span><strong>${userData.kmregusername}</strong></div>` : ''}
+                    ${userData.kmregusercompany ? `<div style="display:flex; align-items:center; margin-bottom:5px;"><span class="material-symbols-outlined" style="margin-right:6px; color:#2196f3; font-size:24px;">apartment</span>${userData.kmregusercompany}</div>` : ''}
+                    ${userData.kmreguseremail || userData.kmreguserEmail ? `<div style="display:flex; align-items:center; margin-bottom:5px;"><span class="material-symbols-outlined" style="margin-right:6px; color:#f44336; font-size:24px;">email</span>${userData.kmreguseremail || userData.kmreguserEmail}</div>` : ''}
+                    ${userData.kmreguserphone ? `<div style="display:flex; align-items:center; margin-bottom:5px;"><span class="material-symbols-outlined" style="margin-right:6px; color:#ff9800; font-size:24px;">phone</span>${userData.kmreguserphone}</div>` : ''}
+                    ${userData.kmreguserbloodgroup ? `<div style="display:flex; align-items:center; margin-bottom:5px;"><span class="material-symbols-outlined" style="margin-right:6px; color:#e91e63; font-size:24px;">local_hospital</span>${userData.kmreguserbloodgroup}</div>` : ''}
+                </div>
+            </div>
+
+            <!-- Full address and visit info -->
+            <div style="margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px; color: #555;">
+                ${fullAddress ? `<div style="display:flex; align-items:center; margin-bottom:5px;"><span class="material-symbols-outlined" style="margin-right:6px; color:#795548; font-size:24px;">location_on</span>${fullAddress}</div>` : ''}
+                ${userData.kmregvisiteename ? `<div style="display:flex; align-items:center; margin-bottom:5px;"><span class="material-symbols-outlined" style="margin-right:6px; color:#ff5722; font-size:24px;">person_outline</span>Visitee: ${userData.kmregvisiteename}</div>` : ''}
+                ${userData.kmregvisiteedepartment ? `<div style="display:flex; align-items:center; margin-bottom:5px;"><span class="material-symbols-outlined" style="margin-right:6px; color:#009688; font-size:24px;">work</span>Department: ${userData.kmregvisiteedepartment}</div>` : ''}
+                ${userData.kmregstartdate ? `<div style="display:flex; align-items:center; margin-bottom:5px;"><span class="material-symbols-outlined" style="margin-right:6px; color:#4caf50; font-size:24px;">event</span>Start: ${formatReadableDate(userData.kmregstartdate)}</div>` : ''}
+                ${userData.kmregenddate ? `<div style="display:flex; align-items:center; margin-bottom:5px;"><span class="material-symbols-outlined" style="margin-right:6px; color:#f44336; font-size:24px;">event_busy</span>End: ${formatReadableDate(userData.kmregenddate)}</div>` : ''}
+                ${completedCoursesStr ? `<div style="display:flex; align-items:center; margin-bottom:5px;"><span class="material-symbols-outlined" style="margin-right:6px; color:#3f51b5; font-size:24px;">school</span>Completed Courses: ${completedCoursesStr}</div>` : ''}
+            </div>
+
+            <!-- Timestamp -->
+            <div style="margin-top: 15px; text-align: center; font-size: 0.85rem; color: #999;">
+                Last Updated: ${new Date(userData.timestamp).toLocaleString()}
+            </div>
+
+            <div id="generateTokenBtn" class="kmkioskBtnStyle" onclick="generateKioskTokenWithCourseName('${lastCompletedCourseName}')" style="margin-top: 0;">Generate Token</div>
+        </div>
+    `;
+
+    // Render card
+    $("#modulesDisplayArea").html(htmlContent);
+    $("#modulesMenuArea").hide();
+    $("#modulesListArea").hide();
+    $("#modulesDisplayArea").show();
+    fixModuleHeight("modulesModuleHeader, footerSection", 20, "modulesDisplayArea");
+}
+
+
+
+function getKmkioskCourse(userPhone, courseId) {
+    shared.currentState = "kmkioskCourseTicketView";
+    const courseData = kmkioskUsercourses.find(c => c.userId === userPhone && c.courseId == courseId);
+    // Parse courseState JSON
+    let courseState = {};
+    try {
+        courseState = JSON.parse(courseData.courseState);
+    } catch (e) {
+        console.error("Invalid courseState JSON", e);
+    }
+
+    // Start building HTML content
+    let htmlContent = `
+        <div class="courseCard" style="background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); padding: 20px; margin: 20px auto; max-width: 500px; font-family: sans-serif;">
+            <h2 style="margin-bottom: 10px; text-align: center;">${courseData.courseName}</h2>
+            <div style="margin-bottom: 15px; font-size: 0.9rem; color: #666; text-align: center;">
+                User: <strong>${courseData.userName}</strong> | Phone: <strong>${courseData.userId}</strong>
+            </div>
+    `;
+
+    // Group contents by contentType
+    const contentsByType = {};
+    (courseState.contents || []).forEach(item => {
+        if (!contentsByType[item.contentType]) contentsByType[item.contentType] = [];
+        contentsByType[item.contentType].push(item);
+    });
+
+    // Iterate over each content type
+    Object.keys(contentsByType).forEach(type => {
+        htmlContent += `<div style="margin-bottom: 15px;">`;
+        htmlContent += `<h3 style="margin-bottom: 5px; border-bottom: 1px solid #ddd; padding-bottom: 3px;">${type}</h3>`;
+
+        contentsByType[type].forEach(item => {
+            const completed = item.status > 0.9;
+            const icon = completed ? '✅' : '⚠️';
+            htmlContent += `
+                <div style="display: flex; align-items: center; margin: 5px 0; font-size: 1rem;">
+                    <span style="margin-right: 10px; font-size: 1.2rem;">${icon}</span>
+                    <span>${item.contentName}</span>
+                </div>
+            `;
+        });
+
+        htmlContent += `</div>`;
+    });
+
+    htmlContent += `
+        <div style="text-align: center; margin-top: 15px; font-size: 0.85rem; color: #999;">
+            Created on: ${courseData.createdOn} | Modified on: ${courseData.modifiedOn}
+        </div>
+    </div>
+    `;
+
+    // Render card
+    $("#modulesDisplayArea").html(htmlContent);
+    $("#modulesMenuArea").hide();
+    $("#modulesListArea").hide();
+    $("#modulesDisplayArea").show();
+    fixModuleHeight("modulesModuleHeader, footerSection", 20, "modulesDisplayArea");
+}
+
+export function backKmkioskHandle() {
+
+    // Case 1: Registration & Test Printer
+    if (shared.currentState === "kmkioskUserRegistration" || shared.currentState === "testPrinter") {
+        if (unsavedData === true) {
+            showConfirmDialog({
+                message: "Any unsaved data will be lost. Proceed?",
+                yesLabel: "Yes",
+                noLabel: "Cancel",
+                onYes: () => displayKmkioskMenu(),
+                onNo: () => closeConfirmDialogBox()
+            });
+        } else {
+            displayKmkioskMenu();
+        }
+        return;
+    }
+
+
+    // Case 2: Common list screens → return to menu
+    if (
+        shared.currentState === "kmkioskViewCourseList" ||
+        shared.currentState === "kmkioskSyncScreen" ||
+        shared.currentState === "viewKmkioskLearninngs" ||
+        shared.currentState === "viewKmkioskRegistrations"
+    ) {
+        displayKmkioskMenu();
+        return;
+    }
+
+
+    // Case 3: User detail & print token
+    if (shared.currentState === "kmkioskUserDetail" || shared.currentState === "viewPrintToken") {
+
+        if (kmkioskConfiguration.config.kmkioskconfig) {
+            if (shared.currentState === "viewPrintToken") {
+                showKmkioskListArea();
+            } else {
+                displayKmkioskMenu();
+            }
+        } else {
+            exitKmkiosk();
+        }
+        return;
+    }
+
+
+    // Case 4: Viewing a course
+    if (shared.currentState === "kmkioskViewCourse") {
+
+        const kmkioskcourseList =
+            kmkioskConfiguration.config.kmkioskcourseList.filter(
+                item => item.userCategory.toUpperCase() === kmUserCategory
+            );
+
+        const multipleCourses = kmkioskcourseList.length !== 1;
+
+        showConfirmDialog({
+            message: "Are you sure you want to exit without completing the course?",
+            yesLabel: "Yes",
+            noLabel: "Cancel",
+            onYes: () => {
+                if (multipleCourses) {
+                    kmkioskViewCourses();
+                } else {
+                    displayKmkioskMenu();
+                }
+            },
+            onNo: () => closeConfirmDialogBox()
+        });
+
+        return;
+    }
+
+
+    // Case 5: Content view / Assessment
+    if (shared.currentState === "viewContent" || shared.currentState === "kmkioskAssessment") {
+        stopProgressMonitoring();
+        showKmkioskListArea();
+        return;
+    }
+
+
+    // Case 6: Ticket views
+    if (shared.currentState === "kmkioskUserTicketView" || shared.currentState === "kmkioskCourseTicketView") {
+        showKmkioskListArea();
+        return;
+    }
+
+
+    // DEFAULT → Exit Kiosk
+    shared.currentState = "";
+    unsavedData = false;
+    exitKmkiosk();
+}
+
+function showKmkioskListArea() {
+	pauseVideos();
+	shared.currentState = shared.currentSourceState;
+	$('#modulesMenuArea').hide();
+	$('#modulesListArea').show();
+	$('#modulesDisplayArea').hide();
+}
+
 
 
 
@@ -3504,6 +5161,16 @@ window.checkIfFile = checkIfFile;
 window.saveKmkioskUsercourses = saveKmkioskUsercourses;
 window.saveKmkioskUserassessments = saveKmkioskUserassessments;
 window.deleteLocalFile = deleteLocalFile;
+window.generateKioskToken = generateKioskToken;
+window.generateKioskTokenWithCourseName = generateKioskTokenWithCourseName;
+window.generateToken = generateToken;   
+window.printTokenSmart = printTokenSmart;
+window.testSerialPrinterWithLog = testSerialPrinterWithLog;
+window.viewKmkioskRegistrations = viewKmkioskRegistrations;
+window.viewKmkioskLearninngs = viewKmkioskLearninngs;
+window.getKmkioskUser = getKmkioskUser;
+window.getKmkioskCourse = getKmkioskCourse;
+window.backKmkioskHandle = backKmkioskHandle;
 
 
 
